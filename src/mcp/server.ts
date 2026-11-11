@@ -80,7 +80,7 @@ const tools = [
   },
 ];
 
-const server = new Server({ name: 'webnix', version: '0.1.0' }, { capabilities: { tools: {} } });
+const server = new Server({ name: 'wiraxplore', version: '0.1.0' }, { capabilities: { tools: {} } });
 
 // persistent browser page across calls
 let sessionPromise: Promise<{ browser: any; page: any }> | null = null;

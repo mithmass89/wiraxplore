@@ -1,4 +1,4 @@
-# Webnix
+# WiraXplore
 
 <p align="center">
   <img src="https://img.shields.io/badge/version-0.1.0-0f172a?style=for-the-badge" alt="version" />
@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <strong>Webnix</strong> is a fast, elegant end-to-end testing harness built on top of
+  <strong>WiraXplore</strong> is a fast, elegant end-to-end testing harness built on top of
   <a href="https://github.com/lightpanda-io/browser">Lightpanda</a> — the headless browser engineered for AI and automation.
   <br />
   Test web apps today. Flutter tomorrow. Drive everything from your coding agent.
@@ -25,11 +25,11 @@
 
 ---
 
-## Why Webnix?
+## Why WiraXplore?
 
 Modern web apps are dynamic, JavaScript-driven, and increasingly tested by AI agents. Chrome is too heavy for that world. Lightpanda is 16× lighter and 9× faster — but it needs a developer-friendly layer around it: lifecycle management, a test runner, an agent bridge, and clear documentation.
 
-**Webnix is that layer.** One CLI. One config. Works for humans and coding agents alike.
+**WiraXplore is that layer.** One CLI. One config. Works for humans and coding agents alike.
 
 ## Features
 
@@ -45,28 +45,28 @@ Modern web apps are dynamic, JavaScript-driven, and increasingly tested by AI ag
 
 ```bash
 # 1. Install
-git clone https://github.com/<you>/webnix.git
-cd webnix
+git clone https://github.com/<you>/WiraXplore.git
+cd WiraXplore
 pnpm install && pnpm build
 
 # 2. Check your environment
-webnix doctor
+WiraXplore doctor
 
 # 3. Scaffold into your project
 cd /path/to/your-app
-webnix init
+WiraXplore init
 
 # 4. Run
-webnix serve          # start Lightpanda on :9222
-webnix test           # run E2E specs
-webnix stop
+WiraXplore serve          # start Lightpanda on :9222
+WiraXplore test           # run E2E specs
+WiraXplore stop
 ```
 
 ## Example Test
 
 ```ts
 import { test, expect } from 'vitest';
-import { withPage, loadConfig } from 'webnix';
+import { withPage, loadConfig } from 'WiraXplore';
 
 test('home greets the user', async () => {
   const cfg = loadConfig(process.cwd());
@@ -89,7 +89,7 @@ test('home greets the user', async () => {
       │ Playwright API                       │ MCP (stdio)
       ▼                                      ▼
 ┌────────────┐                      ┌────────────────┐
-│  Webnix    │ ◄──────────────────► │ Coding Agents  │
+│  WiraXplore    │ ◄──────────────────► │ Coding Agents  │
 │  CLI / SDK │                      │ OpenCode, CC   │
 └────────────┘                      └────────────────┘
 ```
@@ -98,13 +98,13 @@ test('home greets the user', async () => {
 
 ### OpenCode
 ```bash
-webnix plugin:opencode
+WiraXplore plugin:opencode
 # add the printed MCP snippet to ~/.config/opencode/opencode.jsonc
 ```
 
 ### Command Code / any MCP agent
 ```bash
-webnix mcp   # stdio MCP server
+WiraXplore mcp   # stdio MCP server
 ```
 
 MCP tools: `panda_status`, `panda_serve_start`, `panda_serve_stop`, `panda_navigate`, `panda_extract`, `panda_click`, `panda_fill`, `panda_eval`.
@@ -139,7 +139,7 @@ See [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
 
 ## Roadmap
 
-1. `webnix flutter:drive` — native mobile runner bridge.
+1. `WiraXplore flutter:drive` — native mobile runner bridge.
 2. Visual regression snapshots.
 3. GitHub Action for CI.
 4. Plugin for VS Code.
@@ -157,5 +157,5 @@ MIT — see [LICENSE](LICENSE).
 <p align="center">
   Built with care on top of <a href="https://github.com/lightpanda-io/browser">Lightpanda</a>.
   <br />
-  <sub>Webnix — test the web, beautifully.</sub>
+  <sub>WiraXplore — test the web, beautifully.</sub>
 </p>

@@ -4,7 +4,7 @@
 Lightpanda is a headless browser for web. Flutter native apps are not browsers, so they need Flutter's own test tools. This harness prepares integration:
 
 - **Flutter Web**: fully supported via Lightpanda (treat as web app).
-- **Native mobile**: use `flutter drive` / `integration_test`; webnix provides config + docs only.
+- **Native mobile**: use `flutter drive` / `integration_test`; WiraXplore provides config + docs only.
 
 ## Flutter Web workflow
 
@@ -33,7 +33,7 @@ flutter emulators --launch Pixel_7
 flutter drive --target=test_driver/app.dart -d emulator-5554
 ```
 
-webnix config:
+WiraXplore config:
 ```yaml
 flutter:
   enabled: true
@@ -45,5 +45,5 @@ flutter:
 Keep selectors/page objects in `packages/testkit` so web (Lightpanda) and mobile (Flutter driver) reuse them.
 
 ## Roadmap
-- Flutter driver bridge in webnix CLI (`webnix flutter:drive`).
+- Flutter driver bridge in WiraXplore CLI (`WiraXplore flutter:drive`).
 - Unified report merging web + mobile results.

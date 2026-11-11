@@ -1,12 +1,12 @@
 {
-  "name": "webnix",
+  "name": "wiraxplore",
   "version": "0.1.0",
   "description": "E2E testing harness built on Lightpanda browser. Supports web apps now, Flutter later. Integrates with coding agents (OpenCode, Command Code) via MCP and plugins.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "webnix": "./bin/webnix.js"
+    "wiraxplore": "./bin/wiraxplore.js"
   },
   "scripts": {
     "dev": "tsx src/cli.ts",

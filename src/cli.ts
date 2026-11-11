@@ -12,7 +12,7 @@ import { join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 
 const program = new Command();
-program.name('webnix').description('E2E testing harness on Lightpanda browser').version('0.1.0');
+program.name('wiraxplore').description('E2E testing harness on Lightpanda browser').version('0.1.0');
 
 program.command('init').description('Scaffold config + example test + example web app').action(() => {
   const cwd = process.cwd();
@@ -40,8 +40,8 @@ program.command('init').description('Scaffold config + example test + example we
   const testDir = join(cwd, 'tests', 'e2e');
   mkdirSync(testDir, { recursive: true });
   writeFileSync(join(testDir, 'demo.spec.ts'), `import { test, expect } from 'vitest';
-import { withPage } from 'webnix';
-import { loadConfig } from 'webnix';
+import { withPage } from 'WiraXplore';
+import { loadConfig } from 'WiraXplore';
 
 test('demo greet flow', async () => {
   const cfg = loadConfig(process.cwd());
@@ -68,7 +68,7 @@ test('demo greet flow', async () => {
 });
 `, 'utf8');
   log.ok('scaffolded examples/webapp and tests/e2e/demo.spec.ts');
-  log.info('Next: webnix doctor, then webnix serve, then webnix test');
+  log.info('Next: WiraXplore doctor, then WiraXplore serve, then WiraXplore test');
 });
 
 program.command('doctor').description('Check environment & Lightpanda availability').action(async () => {
@@ -137,7 +137,7 @@ program.command('mcp').description('Run MCP server (stdio) for coding agents').a
 
 program.command('plugin:opencode').description('Install OpenCode plugin + register MCP').action(async () => {
   const home = homedir();
-  const pluginDir = join(home, '.config', 'opencode', 'plugins', 'webnix');
+  const pluginDir = join(home, '.config', 'opencode', 'plugins', 'WiraXplore');
   mkdirSync(pluginDir, { recursive: true });
   // copy template from repo if present
   const templateDir = resolve(process.cwd(), 'plugins', 'opencode');
@@ -148,7 +148,7 @@ program.command('plugin:opencode').description('Install OpenCode plugin + regist
     // write minimal plugin
     mkdirSync(join(pluginDir, 'src'), { recursive: true });
     writeFileSync(join(pluginDir, 'package.json'), JSON.stringify({
-      name: 'webnix-opencode',
+      name: 'WiraXplore-opencode',
       version: '0.1.0',
       private: true,
       type: 'module',
@@ -157,20 +157,20 @@ program.command('plugin:opencode').description('Install OpenCode plugin + regist
     }, null, 2));
     writeFileSync(join(pluginDir, 'src', 'index.ts'), `import { Plugin } from '@opencode/plugin';
 export default Plugin.define({
-  id: 'webnix',
+  id: 'WiraXplore',
   async setup(ctx) {
-    await ctx.tool.namespace({ name: 'panda', description: 'Webnix testing' });
+    await ctx.tool.namespace({ name: 'panda', description: 'WiraXplore testing' });
     await ctx.tool.transform(editor => {
-      editor.add({ name: 'status', description: 'Show webnix status', input: { type:'object', properties:{}, additionalProperties:false }, options:{namespace:'panda', codemode:true}, execute: async () => ({ content: 'webnix ready' }) });
+      editor.add({ name: 'status', description: 'Show WiraXplore status', input: { type:'object', properties:{}, additionalProperties:false }, options:{namespace:'panda', codemode:true}, execute: async () => ({ content: 'WiraXplore ready' }) });
     });
-    await ctx.mcp?.register?.({ name: 'webnix', command: ['webnix','mcp'] }).catch(()=>{});
+    await ctx.mcp?.register?.({ name: 'WiraXplore', command: ['WiraXplore','mcp'] }).catch(()=>{});
   }
 });
 `);
   }
   log.ok(`plugin installed at ${pluginDir}`);
   log.info('Register MCP server in opencode.jsonc mcp.servers if not already:');
-  console.log(JSON.stringify({ 'webnix': { type: 'local', command: ['webnix', 'mcp'] } }, null, 2));
+  console.log(JSON.stringify({ 'WiraXplore': { type: 'local', command: ['WiraXplore', 'mcp'] } }, null, 2));
 });
 
 program.command('flutter').description('Flutter E2E helpers (placeholder)').action(() => {

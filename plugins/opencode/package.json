@@ -1,9 +1,9 @@
 {
-  "name": "webnix-opencode",
+  "name": "WiraXplore-opencode",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "OpenCode plugin for Webnix testing",
+  "description": "OpenCode plugin for WiraXplore testing",
   "exports": { ".": "./src/index.ts" },
   "files": ["src", "skills"],
   "dependencies": { "@opencode/plugin": "latest" }

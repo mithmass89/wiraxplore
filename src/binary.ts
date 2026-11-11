@@ -93,7 +93,7 @@ export function installHint(): string {
 
 export function spawnLightpanda(args: string[], opts?: { detached?: boolean }): { pid?: number; kill: () => void } {
   const info = findLightpanda();
-  if (!info) throw new Error('Lightpanda binary not found. Run `webnix doctor`.');
+  if (!info) throw new Error('Lightpanda binary not found. Run `WiraXplore doctor`.');
   let cmd = info.path;
   let fullArgs = args;
   if (info.path.startsWith('wsl:')) {

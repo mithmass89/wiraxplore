@@ -1,5 +1,5 @@
 node_modules/
 dist/
-.webnix.pid
+.WiraXplore.pid
 *.log
 .DS_Store

@@ -6,7 +6,7 @@ Requirements: Node.js >= 20, pnpm (or npm). Lightpanda binary (see Requirements)
 
 ```bash
 git clone <this-repo>
-cd webnix
+cd WiraXplore
 pnpm install
 pnpm build
 ```
@@ -14,7 +14,7 @@ pnpm build
 ## 2. Check environment / Cek environment
 
 ```bash
-webnix doctor
+WiraXplore doctor
 ```
 
 On Windows, Lightpanda has no native binary — use WSL2 or Docker. The doctor command reports availability.
@@ -24,14 +24,14 @@ On Windows, Lightpanda has no native binary — use WSL2 or Docker. The doctor c
 Run inside your web app / Flutter project root:
 
 ```bash
-webnix init
+WiraXplore init
 ```
 
-Creates `webnix.config.yaml`, `examples/webapp`, `tests/e2e/demo.spec.ts`.
+Creates `WiraXplore.config.yaml`, `examples/webapp`, `tests/e2e/demo.spec.ts`.
 
 ## 4. Configure / Konfigurasi
 
-Edit `webnix.config.yaml`:
+Edit `WiraXplore.config.yaml`:
 
 ```yaml
 name: my-app
@@ -49,10 +49,10 @@ tests:
 ## 5. Start Lightpanda / Jalankan Lightpanda
 
 ```bash
-webnix serve            # CDP on 9222
-webnix serve --protocol bidi   # WebDriver Bidi
-webnix status
-webnix stop
+WiraXplore serve            # CDP on 9222
+WiraXplore serve --protocol bidi   # WebDriver Bidi
+WiraXplore status
+WiraXplore stop
 ```
 
 ## 6. Write tests / Tulis test
@@ -76,7 +76,7 @@ test('home loads', async () => {
 ## 7. Run tests / Jalankan test
 
 ```bash
-webnix test
+WiraXplore test
 ```
 
 Auto-starts server if not running, runs Vitest in `tests/e2e`, stops server after.
@@ -86,7 +86,7 @@ Auto-starts server if not running, runs Vitest in `tests/e2e`, stops server afte
 ### OpenCode
 
 ```bash
-webnix plugin:opencode
+WiraXplore plugin:opencode
 # then add MCP entry to ~/.config/opencode/opencode.jsonc (printed by command)
 opencode mcp add   # or edit config manually
 ```
@@ -96,9 +96,9 @@ MCP config snippet:
 {
   "mcp": {
     "servers": {
-      "webnix": {
+      "WiraXplore": {
         "type": "local",
-        "command": ["webnix", "mcp"]
+        "command": ["WiraXplore", "mcp"]
       }
     }
   }
@@ -108,10 +108,10 @@ MCP config snippet:
 ### Command Code / other MCP agents
 
 ```bash
-webnix mcp   # stdio MCP server
+WiraXplore mcp   # stdio MCP server
 ```
 
-Point agent MCP config to `webnix mcp`.
+Point agent MCP config to `WiraXplore mcp`.
 
 ## 9. MCP tools / Tools MCP
 
@@ -129,6 +129,6 @@ See `docs/FLUTTER.md`. Web tests can target Flutter Web builds; native mobile us
 
 ## Troubleshooting
 
-- Binary not found: run `webnix doctor`, follow install hint.
-- Connection refused on 9222: ensure `webnix serve` running.
+- Binary not found: run `WiraXplore doctor`, follow install hint.
+- Connection refused on 9222: ensure `WiraXplore serve` running.
 - Windows: use WSL2/Docker; native binary unavailable.

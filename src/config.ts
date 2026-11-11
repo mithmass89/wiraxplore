@@ -38,7 +38,7 @@ const DEFAULTS: ProjectConfig = {
 };
 
 export function loadConfig(cwd: string = process.cwd()): ProjectConfig {
-  const candidates = ['webnix.config.yaml', 'webnix.config.yml', 'webnix.config.json', '.webnix.json'];
+  const candidates = ['WiraXplore.config.yaml', 'WiraXplore.config.yml', 'WiraXplore.config.json', '.WiraXplore.json'];
   for (const c of candidates) {
     const p = join(cwd, c);
     if (existsSync(p)) {
@@ -62,7 +62,7 @@ function merge(base: ProjectConfig, over: ProjectConfig): ProjectConfig {
 }
 
 export function configPath(cwd: string = process.cwd()): string | null {
-  const candidates = ['webnix.config.yaml', 'webnix.config.yml', 'webnix.config.json', '.webnix.json'];
+  const candidates = ['WiraXplore.config.yaml', 'WiraXplore.config.yml', 'WiraXplore.config.json', '.WiraXplore.json'];
   for (const c of candidates) {
     const p = join(cwd, c);
     if (existsSync(p)) return resolve(p);
@@ -71,8 +71,8 @@ export function configPath(cwd: string = process.cwd()): string | null {
 }
 
 export function writeDefaultConfig(cwd: string = process.cwd()): string {
-  const p = join(cwd, 'webnix.config.yaml');
-  const content = `# webnix configuration
+  const p = join(cwd, 'WiraXplore.config.yaml');
+  const content = `# WiraXplore configuration
 name: my-app
 baseUrl: http://localhost:3000
 

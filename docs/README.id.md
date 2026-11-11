@@ -1,4 +1,4 @@
-# Webnix (Bahasa Indonesia)
+# WiraXplore (Bahasa Indonesia)
 
 Harness E2E testing berbasis [Lightpanda](https://github.com/lightpanda-io/browser) — browser headless yang dirancang untuk AI dan automation. Mendukung web app sekarang, Flutter nanti. Terintegrasi dengan coding agent (OpenCode, Command Code) via MCP dan plugin.
 
@@ -16,11 +16,11 @@ Harness E2E testing berbasis [Lightpanda](https://github.com/lightpanda-io/brows
 ```bash
 pnpm install
 pnpm build
-webnix doctor
-webnix init
+WiraXplore doctor
+WiraXplore init
 # jalankan web app Anda, lalu:
-webnix serve
-webnix test
+WiraXplore serve
+WiraXplore test
 ```
 
 ## Dokumentasi

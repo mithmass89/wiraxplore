@@ -6,7 +6,7 @@ import { findLightpanda } from './binary.js';
 import { log } from './utils/logger.js';
 import type { ProjectConfig } from './config.js';
 
-const PIDFILE = '.webnix.pid';
+const PIDFILE = '.WiraXplore.pid';
 
 export interface ServerHandle {
   pid: number;
@@ -18,7 +18,7 @@ export interface ServerHandle {
 
 export async function startServer(cfg: ProjectConfig, opts?: { protocol?: string; detached?: boolean }): Promise<ServerHandle> {
   const info = findLightpanda();
-  if (!info) throw new Error('Lightpanda binary not found. Run `webnix doctor`.');
+  if (!info) throw new Error('Lightpanda binary not found. Run `WiraXplore doctor`.');
   const host = cfg.browser?.host ?? '127.0.0.1';
   const port = cfg.browser?.port ?? 9222;
   const protocol = opts?.protocol ?? 'cdp';

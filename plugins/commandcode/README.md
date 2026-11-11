@@ -1,15 +1,15 @@
 # Command Code integration
 
-Command Code (and any MCP-capable agent) can use webnix via its MCP server.
+Command Code (and any MCP-capable agent) can use WiraXplore via its MCP server.
 
 Start the MCP server:
-  webnix mcp
+  WiraXplore mcp
 
 Add to your agent MCP config:
 {
   "mcpServers": {
-    "webnix": {
-      "command": "webnix",
+    "WiraXplore": {
+      "command": "WiraXplore",
       "args": ["mcp"]
     }
   }
