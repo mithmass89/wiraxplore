@@ -1,0 +1,10 @@
+{
+  "name": "webnix-opencode",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "OpenCode plugin for Webnix testing",
+  "exports": { ".": "./src/index.ts" },
+  "files": ["src", "skills"],
+  "dependencies": { "@opencode/plugin": "latest" }
+}

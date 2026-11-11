@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.webnix.pid
+*.log
+.DS_Store
