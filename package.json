@@ -8,9 +8,18 @@
   "bin": {
     "wiraxplore": "./bin/wiraxplore.js"
   },
+  "files": [
+    "bin",
+    "dist",
+    "plugins/opencode/src",
+    "plugins/opencode/package.json",
+    "plugins/commandcode",
+    "skills"
+  ],
   "scripts": {
     "dev": "tsx src/cli.ts",
     "build": "tsc -p tsconfig.json",
+    "prepublishOnly": "npm run build",
     "test": "vitest run tests/unit",
     "test:engine": "vitest run tests/e2e",
     "test:all": "vitest run",

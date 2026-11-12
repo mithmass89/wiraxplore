@@ -113,8 +113,9 @@ function registerOpencodeMcp(configDir: string, command: string[]): string | nul
 
 program
   .command('init')
-  .description('Scaffold config, demo web app and a demo E2E spec')
+  .description('Scaffold config, demo spec, and agent instructions for the target project')
   .option('--force', 'overwrite existing files')
+  .option('--no-agent', 'skip the .agents/skills instructions')
   .action((opts) => {
     const cwd = process.cwd();
     const cfgFile = join(cwd, 'wiraxplore.config.yaml');
@@ -133,6 +134,21 @@ program
     writeFileSync(join(testDir, 'demo.spec.ts'), DEMO_SPEC, 'utf8');
 
     log.ok('scaffolded examples/webapp/index.html and tests/e2e/demo.spec.ts');
+
+    if (opts.agent !== false) {
+      const here = dirname(fileURLToPath(import.meta.url));
+      const skillFile = join(here, '..', 'skills', 'wiraxplore', 'SKILL.md');
+      const skillDir = join(cwd, '.agents', 'skills', 'wiraxplore');
+      if (existsSync(skillFile)) {
+        mkdirSync(skillDir, { recursive: true });
+        cpSync(skillFile, join(skillDir, 'SKILL.md'));
+        log.ok(`agent instructions written to ${join(skillDir, 'SKILL.md')}`);
+        log.dim('.agents/skills is read by Command Code and OpenCode; commit it.');
+      } else {
+        log.warn('skill template not found; run `wiraxplore plugin:commandcode` instead');
+      }
+    }
+
     log.info('Next: `wiraxplore doctor`, then `wiraxplore test`');
   });
 
@@ -320,6 +336,54 @@ program
     }
 
     log.dim('Restart OpenCode to load the plugin and MCP tools.');
+  });
+
+program
+  .command('agent:init')
+  .description('Add WiraXplore instructions for AI agents to this project')
+  .option('--dir <path>', 'project root', process.cwd())
+  .option('--agents-md', 'also append a pointer to AGENTS.md')
+  .action((opts) => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const pkgRoot = join(here, '..');
+    const skillFile = join(pkgRoot, 'skills', 'wiraxplore', 'SKILL.md');
+    const projectDir = opts.dir as string;
+    const skillDir = join(projectDir, '.agents', 'skills', 'wiraxplore');
+
+    if (!existsSync(skillFile)) {
+      log.error(`skill template missing at ${skillFile}`);
+      process.exit(1);
+    }
+
+    mkdirSync(skillDir, { recursive: true });
+    cpSync(skillFile, join(skillDir, 'SKILL.md'));
+    log.ok(`skill written to ${join(skillDir, 'SKILL.md')}`);
+    log.dim('Read by Command Code and OpenCode. Commit it with the project.');
+
+    if (opts.agentsMd) {
+      const agentsFile = join(projectDir, 'AGENTS.md');
+      const pointer = [
+        '## Browser E2E tests',
+        '',
+        'This project uses WiraXplore for browser E2E tests.',
+        'Read @.agents/skills/wiraxplore/SKILL.md before writing or running specs.',
+        '',
+        'Quick check:',
+        '',
+        '```bash',
+        'npx wiraxplore doctor    # or: node ../wiraxplore/bin/wiraxplore.js doctor',
+        'npx wiraxplore test',
+        '```',
+        '',
+      ].join('\n');
+      const existing = existsSync(agentsFile) ? readFileSync(agentsFile, 'utf8') : '';
+      if (existing.includes('.agents/skills/wiraxplore')) {
+        log.ok('AGENTS.md already points at the skill');
+      } else {
+        writeFileSync(agentsFile, existing ? `${existing.trimEnd()}\n\n${pointer}` : `# AGENTS.md\n\n${pointer}`, 'utf8');
+        log.ok(`pointer appended to ${agentsFile}`);
+      }
+    }
   });
 
 program

@@ -1,110 +1,335 @@
 ---
 name: wiraxplore
-description: Run and debug browser E2E tests with WiraXplore using Lightpanda, Playwright, or Puppeteer. Use when the user wants to test a web app, write E2E specs, check why a page renders differently, take a screenshot of a local app, or drive a browser from the agent.
+description: Test this app's UI with WiraXplore browser E2E (Lightpanda, Playwright, or Puppeteer). Use when asked to test a web page, verify a user flow, write or debug an E2E spec, check why a page renders differently, or take a screenshot of a running app.
 ---
 
-# WiraXplore browser testing
+# WiraXplore — Agent Playbook
 
-WiraXplore is a CLI + SDK that runs the same E2E specs against three engines:
+Panduan lengkap memakai WiraXplore untuk menguji app di project ini.
+Dokumen ini ditulis untuk **AI agent** (Command Code, OpenCode, Claude, Cursor, dll)
+dan untuk manusia yang mengawasi agent tersebut.
 
-| engine | what it is | driver | when to use |
+> Simpan file ini di `.agents/skills/wiraxplore/SKILL.md` pada project Anda.
+> Command Code dan OpenCode sama-sama membaca folder `.agents/skills/`.
+> Alternatif cepat: jalankan `npx wiraxplore agent:init --agents-md`.
+
+---
+
+## 1. Apa itu WiraXplore
+
+WiraXplore adalah harness E2E yang menjalankan **satu** suite spec terhadap tiga
+engine browser. Kode test tidak berubah saat Anda berganti engine.
+
+```
+App Anda (dev server)  ──HTTP──▶  browser  ──CDP──▶  WiraXplore  ──▶  vitest
+```
+
+Tiga hal yang perlu dipahami:
+
+1. **App Anda black box.** WiraXplore tidak meng-import kode app, tidak butuh
+   SDK, tidak butuh registrasi route/flow. Syaratnya cuma satu: app bisa diakses
+   lewat URL (`baseUrl`).
+2. **"Flow" = file spec.** Semua skenario ada di `tests/e2e/*.spec.ts` dan
+   ditemukan oleh vitest lewat konvensi nama file. Tidak ada discovery otomatis
+   dari router atau sitemap.
+3. **WiraXplore tidak menyalakan app Anda.** Jalankan dev server sendiri
+   (`pnpm dev`, `npm start`, `flutter run -d chrome`, dst). WiraXplore hanya
+   mengurus browser.
+
+---
+
+## 2. Engine
+
+| engine | browser | driver | kapan dipakai |
 | --- | --- | --- | --- |
-| `lightpanda` | Lightpanda headless browser (Zig) | playwright or puppeteer over CDP | fast, low memory, CI |
-| `playwright` | local Chrome/Edge binary | playwright-core | full rendering, everything Lightpanda lacks |
-| `puppeteer` | local Chrome/Edge binary | puppeteer-core | projects already on Puppeteer |
+| `lightpanda` | Lightpanda (Zig, headless) | `playwright` atau `puppeteer` via CDP | cepat & hemat memori; cocok untuk iterasi dan CI |
+| `playwright` | Chrome/Edge lokal | `playwright-core` | layout, screenshot, canvas, WebGL, semua API modern |
+| `puppeteer` | Chrome/Edge lokal | `puppeteer-core` | project yang sudah memakai Puppeteer |
 
-## 1. Check what is available
+Aturan penting:
+
+- Lightpanda **tidak merender grafik**. WebGL, `<canvas>`, dan screenshot-diff
+  tidak bisa diandalkan. Assertion berbasis DOM tetap akurat.
+- Kalau spec lulus di Lightpanda tapi tampilan terlihat salah, ulangi dengan
+  `--engine playwright` sebelum menyimpulkan apa pun.
+- Engine `playwright`/`puppeteer` meluncurkan Chrome sendiri; tidak butuh server
+  CDP dan tidak butuh binary Lightpanda.
+
+Matriks kombinasi yang valid:
+
+```
+lightpanda + playwright   ✅ (default, via CDP)
+lightpanda + puppeteer    ✅ (via CDP)
+playwright + playwright   ✅ (launch Chrome)
+puppeteer  + puppeteer    ✅ (launch Chrome)
+playwright + puppeteer    ❌ ditolak
+puppeteer  + playwright   ❌ ditolak
+```
+
+---
+
+## 3. Instalasi (sekali per project)
+
+Belum ada di npm. Pilih salah satu:
 
 ```bash
-wiraxplore doctor
-wiraxplore doctor --json
+# A. dari repo lokal (paling umum saat ini)
+pnpm add -D file:../wiraxplore vitest
+# atau: npm i -D ../wiraxplore
+
+# B. setelah dipublikasikan
+pnpm add -D wiraxplore vitest
 ```
 
-`doctor` reports the platform, the active engine, whether the Lightpanda binary is
-reachable (including `wsl:` paths on Windows), whether Chrome/Edge was found, and
-whether the CDP server answers on `/json/version`.
+Siapkan project:
 
-## 2. Pick the engine
+```bash
+npx wiraxplore init                     # config + demo spec + skill agent
+npx wiraxplore agent:init --agents-md   # kalau project sudah punya config
+npx wiraxplore doctor                   # cek engine & browser
+```
 
-Project config `wiraxplore.config.yaml`:
+`init` membuat:
+
+```
+wiraxplore.config.yaml
+tests/e2e/demo.spec.ts
+examples/webapp/index.html
+.agents/skills/wiraxplore/SKILL.md
+```
+
+Tanpa npm sama sekali pun bisa, selama paket tersedia di filesystem:
+
+```bash
+node ../wiraxplore/bin/wiraxplore.js doctor
+```
+
+---
+
+## 4. Konfigurasi
+
+`wiraxplore.config.yaml` di root project:
 
 ```yaml
+name: my-app
+baseUrl: http://localhost:3000
+
 browser:
-  engine: lightpanda   # lightpanda | playwright | puppeteer
-  driver: playwright   # playwright | puppeteer
+  engine: lightpanda     # lightpanda | playwright | puppeteer
+  driver: playwright     # playwright | puppeteer
+  mode: cdp              # cdp | bidi | mcp
+  host: 127.0.0.1
+  port: 9222             # port CDP Lightpanda
+  debugPort: 9333        # dipakai saat Chrome diluncurkan sendiri
+  channel: chrome        # chrome | msedge (opsional)
+  # executablePath: ""   # binary browser eksplisit
+  headless: true
+  obeyRobots: false
+
+tests:
+  dir: tests/e2e
+  pattern: "**/*.spec.ts"
+  timeoutMs: 30000
+  # args: ["--reporter=verbose"]
 ```
 
-Overrides without touching config:
+Nama file yang dikenali (yang pertama ditemukan menang):
+`wiraxplore.config.yaml`, `.yml`, `.json`, `.wiraxplore.json`, lalu varian lama
+berhuruf besar (`WiraXplore.config.*`).
+
+Override tanpa mengubah config:
 
 ```bash
 wiraxplore test --engine playwright
-wiraxplore test --engine puppeteer
-wiraxplore test --engine lightpanda --driver puppeteer
+wiraxplore test --engine puppeteer --filter login
 ```
 
-Environment overrides: `WIRAXPLORE_ENGINE`, `WIRAXPLORE_DRIVER`,
-`WIRAXPLORE_CDP_URL`, `WIRAXPLORE_BASE_URL`.
+Variabel environment:
 
-## 3. Lifecycle
+| variabel | efek |
+| --- | --- |
+| `WIRAXPLORE_ENGINE` | engine (`lightpanda`/`playwright`/`puppeteer`) |
+| `WIRAXPLORE_DRIVER` | driver (`playwright`/`puppeteer`) |
+| `WIRAXPLORE_CDP_URL` | alamat CDP, mis. `http://127.0.0.1:9222` |
+| `WIRAXPLORE_BASE_URL` | override `baseUrl` |
+| `LIGHTPANDA_BIN` | path binary Lightpanda (boleh `wsl:/path/...`) |
 
-```bash
-wiraxplore serve            # start Lightpanda CDP on 127.0.0.1:9222
-wiraxplore status           # server + CDP probe
-wiraxplore stop
-wiraxplore test             # auto-starts the server when engine is lightpanda
-```
+---
 
-`wiraxplore test` starts the server only for the `lightpanda` engine and stops it
-afterwards. `playwright`/`puppeteer` launch their own Chrome.
+## 5. Menulis spec
 
-## 4. Write specs
-
-Specs import the published package, not a relative source path:
+Semua spec memakai Vitest + API `PandaPage`.
 
 ```ts
 import { test, expect } from 'vitest';
 import { withPage, loadConfig } from 'wiraxplore';
 
-test('greet flow', async () => {
+test('login berhasil', async () => {
   const cfg = loadConfig();
   await withPage(cfg, async (page) => {
-    await page.goto(cfg.baseUrl!);
-    await page.fill('#name', 'Panda');
-    await page.click('#greet');
-    expect(await page.text('#out')).toBe('Hello, Panda');
+    await page.goto(`${cfg.baseUrl}/login`);
+    await page.fill('#email', 'user@example.com');
+    await page.fill('#password', 'secret');
+    await page.click('button[type=submit]');
+    await page.waitFor('[data-testid=dashboard]');
+    expect(await page.text('[data-testid=greeting]')).toContain('Halo');
   });
 });
 ```
 
-`PandaPage` API: `goto`, `setContent`, `click`, `fill`, `text`, `html`, `eval`,
-`waitFor`, `title`, `url`, `screenshot`, `close`, plus `raw` for the underlying
-driver page when a spec needs something engine-specific.
+Override engine hanya untuk satu test:
 
-## 5. Debug a failure
+```ts
+await withPage(cfg, async (page) => { /* ... */ }, { engine: 'playwright' });
+```
 
-1. `wiraxplore doctor` — engine and CDP reachability.
-2. `wiraxplore status` — is the server actually answering?
-3. `.wiraxplore.log` — Lightpanda server output.
-4. Re-run the failing spec on a real browser: `wiraxplore test --engine playwright`.
-   If it passes there, the page uses an API Lightpanda does not implement.
+### Ringkasan API `PandaPage`
 
-## 6. Agent integration
+| method | keterangan |
+| --- | --- |
+| `goto(url, opts?)` | buka URL; `opts.waitUntil`: `load`/`domcontentloaded`/`networkidle0`/`networkidle2` |
+| `setContent(html)` | isi halaman dengan HTML mentah (tanpa server) |
+| `click(selector)` | klik elemen |
+| `fill(selector, value)` | kosongkan lalu isi input |
+| `text(selector)` | `textContent` elemen |
+| `html(selector?)` | `innerHTML` elemen, atau seluruh dokumen bila tanpa selector |
+| `eval(fnOrExpr, arg?)` | jalankan JS di halaman, hasil dikembalikan |
+| `waitFor(selector, opts?)` | tunggu selector; `state`: `attached`/`visible`/`hidden`/`detached` |
+| `title()` / `url()` | judul dan URL aktif |
+| `screenshot(opts?)` | PNG: `{ path, fullPage, type }` |
+| `close()` | tutup halaman |
+| `raw` | objek page asli Playwright/Puppeteer untuk kebutuhan khusus |
 
-- **MCP** (Command Code, OpenCode, any MCP client): `npx -y wiraxplore mcp`.
-  Tools: `panda_status`, `panda_serve_start`, `panda_serve_stop`,
-  `panda_navigate`, `panda_extract`, `panda_click`, `panda_fill`, `panda_eval`,
-  `panda_wait`, `panda_screenshot`, `panda_close`.
-  Pass `engine` on `panda_navigate` to switch engines mid-session.
-- **Command Code**: `cmd mcp add wiraxplore -- npx -y wiraxplore mcp`,
-  or `wiraxplore plugin:commandcode` for the exact local command.
-- **OpenCode**: `wiraxplore plugin:opencode` installs the plugin into
-  `~/.config/opencode/plugins/wiraxplore` and prints the `mcp.servers` entry.
+Semua method mengembalikan `Promise` kecuali `url()`.
 
-## Rules of thumb
+---
 
-- Never claim a UI works because a spec passed on Lightpanda alone; confirm layout
-  or visual behaviour on `--engine playwright`.
-- Prefer `data-testid` selectors; they survive both engines.
-- Lightpanda has no graphical rendering: skip WebGL, canvas pixels, and
-  screenshot-diff assertions there.
-- Always stop what you started (`wiraxplore stop`, or let `wiraxplore test` do it).
+## 6. Menjalankan test
+
+```bash
+wiraxplore test                       # engine dari config
+wiraxplore test --filter login        # hanya file yang cocok
+wiraxplore test --engine playwright    # engine lain
+wiraxplore test --no-serve             # jangan auto-start CDP
+wiraxplore test --ui                   # vitest watch
+```
+
+`wiraxplore test` menyalakan Lightpanda otomatis **hanya** untuk engine
+`lightpanda`, lalu mematikannya setelah run selesai — termasuk saat test gagal.
+
+Langsung lewat vitest:
+
+```bash
+pnpm exec vitest run tests/e2e
+WIRAXPLORE_ENGINE=playwright pnpm exec vitest run tests/e2e
+```
+
+---
+
+## 7. Lifecycle Lightpanda
+
+```bash
+wiraxplore serve                   # CDP di 127.0.0.1:9222
+wiraxplore serve --protocol bidi   # WebDriver Bidi
+wiraxplore status                  # probe /json/version
+wiraxplore stop
+```
+
+Log server ada di `.wiraxplore.log`; PID di `.wiraxplore.pid`. Keduanya
+sebaiknya masuk `.gitignore`.
+
+Di Windows tidak ada binary Lightpanda native. WiraXplore mendeteksinya di WSL
+(`wsl:/home/<user>/.local/bin/lightpanda`) dan bicara lewat `127.0.0.1:9222`.
+Kalau WSL tidak tersedia, pakai engine `playwright` atau `puppeteer`.
+
+---
+
+## 8. MCP tools (drive browser dari agent)
+
+Jalankan `wiraxplore mcp` sebagai MCP server stdio, atau daftarkan sekali:
+
+```bash
+cmd mcp add wiraxplore -- npx -y wiraxplore mcp    # Command Code
+```
+
+| tool | parameter | fungsi |
+| --- | --- | --- |
+| `panda_status` | — | platform, engine aktif, binary, probe CDP |
+| `panda_serve_start` | `protocol?` | nyalakan server CDP |
+| `panda_serve_stop` | — | matikan server CDP |
+| `panda_navigate` | `url`, `waitUntil?`, `engine?`, `includeText?` | buka URL, balikan title/URL/teks |
+| `panda_extract` | `selector?`, `format?` (`text`/`html`) | baca isi halaman |
+| `panda_click` | `selector` | klik elemen |
+| `panda_fill` | `selector`, `value` | isi input |
+| `panda_eval` | `expression` | jalankan JS di halaman |
+| `panda_wait` | `selector`, `state?`, `timeoutMs?` | tunggu selector |
+| `panda_screenshot` | `fullPage?` | kirim PNG halaman |
+| `panda_close` | — | tutup sesi browser |
+
+Sesi dipakai bersama antar tool. Mengirim `engine` pada `panda_navigate` akan
+mengganti engine untuk panggilan berikutnya.
+
+**Alur eksplorasi tanpa spec** (berguna saat agent belum tahu UI-nya):
+
+```
+panda_navigate  { url: "http://localhost:3000" }
+panda_extract   { selector: "nav a", format: "html" }
+panda_click     { selector: "a[href='/settings']" }
+panda_screenshot{ fullPage: true }
+```
+
+Setelah alurnya jelas, ubah langkah-langkah itu menjadi spec agar bisa
+dijalankan ulang tanpa LLM.
+
+---
+
+## 9. Alur kerja yang direkomendasikan
+
+1. Pastikan app jalan dan `baseUrl` benar.
+2. `wiraxplore doctor` — engine siap?
+3. Tulis satu spec untuk alur paling penting dulu.
+4. `wiraxplore test --engine lightpanda` untuk iterasi cepat.
+5. `wiraxplore test --engine playwright` sebelum merge/rilis.
+6. Commit `tests/e2e`, `wiraxplore.config.yaml`, dan `.agents/`.
+
+---
+
+## 10. Troubleshooting
+
+| gejala | penyebab / solusi |
+| --- | --- |
+| `unknown browser.engine "x"` | nilai engine salah; pakai `lightpanda`, `playwright`, atau `puppeteer` |
+| `no CDP endpoint at http://127.0.0.1:9222` | jalankan `wiraxplore serve`, atau pakai engine `playwright` |
+| CDP tidak menjawab setelah `serve` | lihat `.wiraxplore.log`; cek port 9222 dipakai proses lain |
+| `lightpanda not found` (Windows) | install di WSL2, atau ganti engine ke `playwright`/`puppeteer` |
+| `browser channel "chrome" not found` | set `browser.executablePath` ke binary Chrome/Edge |
+| test lulus di Lightpanda, gagal di Chrome | perilaku spesifik browser; ikuti hasil Chrome |
+| halaman kosong di Lightpanda | API belum didukung (canvas/WebGL); pakai `--engine playwright` |
+| `Cannot find module 'wiraxplore'` | paket belum terpasang; lihat bagian 3 |
+| `dist/ is missing` saat menjalankan bin | jalankan `npm run build` di repo WiraXplore |
+
+---
+
+## 11. Batasan yang harus dipatuhi agent
+
+- Jangan mengklaim UI "benar" hanya dari hasil Lightpanda.
+- Jangan menjalankan `wiraxplore serve` tanpa mematikannya kembali
+  (`wiraxplore stop`), kecuali sengaja dibiarkan untuk sesi berikutnya.
+- Jangan menambah dependency ke app hanya untuk keperluan test.
+- Jangan menulis spec yang bergantung pada urutan eksekusi file lain; setiap
+  spec harus bisa jalan sendiri.
+- App tetap milik manusia: jangan mengubah kode produksi demi meluluskan test
+  tanpa izin eksplisit.
+
+---
+
+## 12. Referensi
+
+| dokumen | isi |
+| --- | --- |
+| `docs/USAGE.md` (di repo WiraXplore) | acuan pemakaian lengkap untuk manusia |
+| `docs/DOCS.md` | peta seluruh dokumentasi |
+| `docs/REQUIREMENTS.md` | prasyarat per engine & platform |
+| `docs/FLUTTER.md` | kasus Flutter Web dan mobile |
+| `plugins/opencode/README.md` | integrasi OpenCode (V1 vs V2) |
+| `plugins/commandcode/README.md` | integrasi Command Code |
