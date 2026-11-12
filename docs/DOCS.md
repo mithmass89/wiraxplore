@@ -16,6 +16,7 @@ Satu halaman untuk tahu dokumen mana yang harus dibaca.
 | menghubungkan OpenCode | [../plugins/opencode/README.md](../plugins/opencode/README.md) |
 | mengajari agent cara memakainya | [../skills/wiraxplore/SKILL.md](../skills/wiraxplore/SKILL.md) |
 | mempublikasikan paket ke npm | [PUBLISHING.md](PUBLISHING.md) |
+| menjalankan pemeriksaan sebelum push | [CI.md](CI.md) |
 
 **Acuan utama pemakaian: [`docs/USAGE.md`](USAGE.md).** Dokumen lain melengkapi,
 tidak menggantikan.

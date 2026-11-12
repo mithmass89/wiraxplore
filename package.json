@@ -32,6 +32,7 @@
     "test:all": "vitest run",
     "test:watch": "vitest",
     "lint": "tsc --noEmit",
+    "verify": "node scripts/verify.mjs",
     "mcp": "tsx src/mcp/server.ts",
     "publish:public": "npm publish --access public",
     "publish:dry": "npm publish --access public --dry-run"
