@@ -1,10 +1,17 @@
 {
   "name": "wiraxplore",
   "version": "0.2.0",
-  "description": "E2E testing harness for Lightpanda, Playwright and Puppeteer. Integrates with coding agents (OpenCode, Command Code) via MCP and plugins.",
+  "description": "E2E testing harness for Lightpanda, Playwright and Puppeteer. One spec suite, identical behaviour on every engine. Ships MCP tools and agent skills.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
   "bin": {
     "wiraxplore": "./bin/wiraxplore.js"
   },
@@ -19,13 +26,15 @@
   "scripts": {
     "dev": "tsx src/cli.ts",
     "build": "tsc -p tsconfig.json",
-    "prepublishOnly": "npm run build",
+    "prepublishOnly": "npm run build && npm run test",
     "test": "vitest run tests/unit",
     "test:engine": "vitest run tests/e2e",
     "test:all": "vitest run",
     "test:watch": "vitest",
     "lint": "tsc --noEmit",
-    "mcp": "tsx src/mcp/server.ts"
+    "mcp": "tsx src/mcp/server.ts",
+    "publish:public": "npm publish --access public",
+    "publish:dry": "npm publish --access public --dry-run"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
@@ -38,6 +47,14 @@
     "ws": "^8.20.0",
     "yaml": "^2.8.3",
     "zod": "^4.6.7"
+  },
+  "peerDependencies": {
+    "vitest": ">=1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vitest": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
@@ -60,7 +77,22 @@
     "mcp",
     "opencode",
     "commandcode",
-    "flutter"
+    "flutter",
+    "headless",
+    "cdp"
   ],
-  "license": "MIT"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mithmass89/wiraxplore.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mithmass89/wiraxplore/issues"
+  },
+  "homepage": "https://github.com/mithmass89/wiraxplore#readme",
+  "author": "massmitro89",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
 }
