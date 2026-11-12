@@ -64,10 +64,15 @@ class PlaywrightPage implements PandaPage {
   }
 }
 
-export async function connectPlaywright(opts: EngineOptions): Promise<{ page: PandaPage; browser: Browser; close: () => Promise<void> }> {
+export async function connectPlaywright(
+  opts: EngineOptions,
+  shared?: () => Promise<Browser>,
+): Promise<{ page: PandaPage; browser: Browser; close: () => Promise<void> }> {
   let browser: Browser;
   if (opts.cdpUrl) {
     browser = await chromium.connectOverCDP(opts.cdpUrl);
+  } else if (shared) {
+    browser = await shared();
   } else {
     browser = await chromium.launch({
       executablePath: resolveExecutable(opts),
@@ -75,11 +80,27 @@ export async function connectPlaywright(opts: EngineOptions): Promise<{ page: Pa
       ...(opts.slowMo ? { slowMo: opts.slowMo } : {}),
     });
   }
-  const context: BrowserContext = browser.contexts()[0] ?? (await browser.newContext());
+  // A shared browser still gets a fresh context per session, so localStorage,
+  // cookies and history never leak from one test into the next.
+  const context: BrowserContext = shared
+    ? await browser.newContext()
+    : (browser.contexts()[0] ?? (await browser.newContext()));
   const page = await context.newPage();
   const close = async () => {
+    if (shared) {
+      try { await context.close(); } catch {}
+      return;
+    }
     try { await page.close(); } catch {}
     try { await browser.close(); } catch {}
   };
   return { page: new PlaywrightPage(page), browser, close };
+}
+
+export function launchPlaywrightBrowser(opts: EngineOptions): Promise<Browser> {
+  return chromium.launch({
+    executablePath: resolveExecutable(opts),
+    headless: opts.headless,
+    ...(opts.slowMo ? { slowMo: opts.slowMo } : {}),
+  });
 }

@@ -79,7 +79,10 @@ async function canReach(cdpUrl: string): Promise<boolean> {
   }
 }
 
-export async function connectPuppeteer(opts: EngineOptions): Promise<{ page: PandaPage; browser: Browser; close: () => Promise<void> }> {
+export async function connectPuppeteer(
+  opts: EngineOptions,
+  shared?: () => Promise<Browser>,
+): Promise<{ page: PandaPage; browser: Browser; close: () => Promise<void> }> {
   let browser: Browser;
   let detach = false;
 
@@ -90,6 +93,8 @@ export async function connectPuppeteer(opts: EngineOptions): Promise<{ page: Pan
     }
     browser = await puppeteer.connect({ browserURL: url, defaultViewport: null });
     detach = true;
+  } else if (shared) {
+    browser = await shared();
   } else {
     browser = await puppeteer.launch({
       executablePath: opts.executablePath,
@@ -100,10 +105,28 @@ export async function connectPuppeteer(opts: EngineOptions): Promise<{ page: Pan
     });
   }
 
-  const page = await browser.newPage();
+  // A shared browser still gets a fresh incognito context per session, so
+  // localStorage and cookies never leak from one test into the next.
+  const context = shared ? await browser.createBrowserContext() : null;
+  const page = context ? await context.newPage() : await browser.newPage();
   const close = async () => {
+    if (context) {
+      try { await context.close(); } catch {}
+      return;
+    }
     try { await page.close(); } catch {}
-    try { detach ? await browser.disconnect() : await browser.close(); } catch {}
+    if (detach) { try { await browser.disconnect(); } catch {} }
+    else { try { await browser.close(); } catch {} }
   };
   return { page: new PuppeteerPage(page), browser, close };
+}
+
+export function launchPuppeteerBrowser(opts: EngineOptions): Promise<Browser> {
+  return puppeteer.launch({
+    executablePath: opts.executablePath,
+    headless: opts.headless,
+    defaultViewport: null,
+    ...(opts.headless ? {} : { args: ['--start-maximized'] }),
+    ...(opts.slowMo ? { slowMo: opts.slowMo } : {}),
+  });
 }

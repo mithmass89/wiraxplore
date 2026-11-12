@@ -1,5 +1,5 @@
-import { connectPlaywright } from './playwright.js';
-import { connectPuppeteer } from './puppeteer.js';
+import { connectPlaywright, launchPlaywrightBrowser } from './playwright.js';
+import { connectPuppeteer, launchPuppeteerBrowser } from './puppeteer.js';
 import { findLightpanda, binaryVersion } from '../binary.js';
 import { loadConfig, type ProjectConfig } from '../config.js';
 import { detectPlatform } from '../utils/platform.js';
@@ -154,6 +154,56 @@ export async function withPage<T>(
   } finally {
     await session.close();
   }
+}
+
+/**
+ * Reuses one browser for every call in a spec file. Launching Chrome costs
+ * ~0.5s plus a ~0.4s first-click warm-up, so a file with ten tests would
+ * otherwise pay that ten times.
+ *
+ *   const shared = createSharedSession(cfg, { engine: 'playwright' });
+ *   await shared.withPage(async (page) => { ... });
+ *   afterAll(() => shared.close());
+ */
+export function createSharedSession(
+  cfg: ProjectConfig = loadConfig(),
+  override?: PlanOverride,
+) {
+  let browserPromise: Promise<unknown> | null = null;
+
+  const getBrowser = () => {
+    if (!browserPromise) {
+      const opts = engineOptions(cfg, override);
+      browserPromise = opts.driver === 'puppeteer'
+        ? launchPuppeteerBrowser(opts)
+        : launchPlaywrightBrowser(opts);
+    }
+    return browserPromise;
+  };
+
+  const withPage = async <T>(fn: (page: PandaPage) => Promise<T>): Promise<T> => {
+    const opts = engineOptions(cfg, override);
+    const session = opts.driver === 'puppeteer'
+      ? await connectPuppeteer(opts, getBrowser as never)
+      : await connectPlaywright(opts, getBrowser as never);
+    try {
+      return await fn(session.page);
+    } finally {
+      await session.close();
+    }
+  };
+
+  const close = async () => {
+    const current = browserPromise;
+    browserPromise = null;
+    if (!current) return;
+    try {
+      const browser = await current as { close?: () => Promise<void> };
+      await browser.close?.();
+    } catch {}
+  };
+
+  return { withPage, close };
 }
 
 export function engineReport(cfg: ProjectConfig = loadConfig()): Record<string, unknown> {

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { withPage } from '../../src/adapters/engine.ts';
+import { createSharedSession } from '../../src/adapters/engine.ts';
 import { loadConfig } from '../../src/config.ts';
 import type { PandaPage } from '../../src/adapters/page.ts';
 
@@ -20,6 +20,7 @@ const PASSWORD = 'panda123';
  */
 const ENGINE = process.env.WIRAXPLORE_ENGINE ?? 'playwright';
 const HEADED = process.env.WIRAXPLORE_HEADED === '1';
+// One browser per spec file: launching Chrome per test dominates the runtime.
 
 let server: Server | null = null;
 let demoUrl = '';
@@ -68,63 +69,59 @@ async function addRecord(page: PandaPage, record: { name: string; role?: string;
   await page.click('[data-testid=data-submit]');
 }
 
-const opts = { engine: ENGINE, headed: HEADED };
+const shared = createSharedSession(loadConfig(process.cwd()), { engine: ENGINE, headed: HEADED });
+
+afterAll(() => shared.close());
 
 describe('demo app: login and data entry', () => {
   test('login form is shown first', async () => {
-    const cfg = loadConfig(process.cwd());
-    await withPage(cfg, async (page) => {
+    await shared.withPage(async (page) => {
       await openDemo(page);
       expect(await page.text('[data-testid=session-badge]')).toBe('belum login');
       expect(await page.eval<boolean>(`document.querySelector('[data-testid=app-view]').classList.contains('hidden')`)).toBe(true);
-    }, opts);
+    });
   }, 60000);
 
   test('rejects wrong credentials', async () => {
-    const cfg = loadConfig(process.cwd());
-    await withPage(cfg, async (page) => {
+    await shared.withPage(async (page) => {
       await openDemo(page);
       await page.fill('[data-testid=login-email]', EMAIL);
       await page.fill('[data-testid=login-password]', 'salah');
       await page.click('[data-testid=login-submit]');
       expect(await page.text('[data-testid=login-message]')).toBe('Kredensial salah.');
       expect(await page.eval<boolean>(`document.querySelector('[data-testid=app-view]').classList.contains('hidden')`)).toBe(true);
-    }, opts);
+    });
   }, 60000);
 
   test('requires both fields before submitting', async () => {
-    const cfg = loadConfig(process.cwd());
-    await withPage(cfg, async (page) => {
+    await shared.withPage(async (page) => {
       await openDemo(page);
       await page.click('[data-testid=login-submit]');
       expect(await page.text('[data-testid=login-message]')).toBe('Email dan password wajib diisi.');
-    }, opts);
+    });
   }, 60000);
 
   test('logs in with the demo credentials', async () => {
-    const cfg = loadConfig(process.cwd());
-    await withPage(cfg, async (page) => {
+    await shared.withPage(async (page) => {
       await openDemo(page);
       await login(page);
       expect(await page.text('[data-testid=session-badge]')).toBe(`login sebagai ${EMAIL}`);
       expect(await page.eval<boolean>(`document.querySelector('[data-testid=login-view]').classList.contains('hidden')`)).toBe(true);
-    }, opts);
+    });
   }, 60000);
 
   test('rejects a record without a name', async () => {
-    const cfg = loadConfig(process.cwd());
-    await withPage(cfg, async (page) => {
+    await shared.withPage(async (page) => {
       await openDemo(page);
       await login(page);
       await page.fill('[data-testid=data-city]', 'Bandung');
       await page.click('[data-testid=data-submit]');
       expect(await page.text('[data-testid=data-message]')).toBe('Nama wajib diisi.');
-    }, opts);
+    });
   }, 60000);
 
   test('adds a record and renders it in the table', async () => {
-    const cfg = loadConfig(process.cwd());
-    await withPage(cfg, async (page) => {
+    await shared.withPage(async (page) => {
       await openDemo(page);
       await login(page);
 
@@ -138,12 +135,11 @@ describe('demo app: login and data entry', () => {
       expect(await page.text('[data-testid=record-city]')).toBe('Jakarta');
       expect(await page.text('[data-testid=data-message]')).toBe('Data "Budi Santoso" tersimpan.');
       expect(await page.eval<boolean>(`document.querySelector('[data-testid=empty-state]').classList.contains('hidden')`)).toBe(true);
-    }, opts);
+    });
   }, 60000);
 
   test('keeps records across several submissions', async () => {
-    const cfg = loadConfig(process.cwd());
-    await withPage(cfg, async (page) => {
+    await shared.withPage(async (page) => {
       await openDemo(page);
       await login(page);
 
@@ -155,12 +151,11 @@ describe('demo app: login and data entry', () => {
         `Array.from(document.querySelectorAll('[data-testid=record-name]')).map(function (n) { return n.textContent; })`,
       );
       expect(rows).toEqual(['Siti Aminah', 'Rizky Pratama']);
-    }, opts);
+    });
   }, 60000);
 
   test('logout returns to the login view and hides records', async () => {
-    const cfg = loadConfig(process.cwd());
-    await withPage(cfg, async (page) => {
+    await shared.withPage(async (page) => {
       await openDemo(page);
       await login(page);
       await addRecord(page, { name: 'Dewi Lestari', role: 'pm', city: 'Yogyakarta' });
@@ -170,12 +165,11 @@ describe('demo app: login and data entry', () => {
 
       expect(await page.text('[data-testid=session-badge]')).toBe('belum login');
       expect(await page.eval<boolean>(`document.querySelector('[data-testid=app-view]').classList.contains('hidden')`)).toBe(true);
-    }, opts);
+    });
   }, 60000);
 
   test('reset clears the form without adding a record', async () => {
-    const cfg = loadConfig(process.cwd());
-    await withPage(cfg, async (page) => {
+    await shared.withPage(async (page) => {
       await openDemo(page);
       await login(page);
       await page.fill('[data-testid=data-name]', 'Tidak Jadi');
@@ -184,6 +178,6 @@ describe('demo app: login and data entry', () => {
 
       expect(await page.eval<string>(`document.querySelector('[data-testid=data-name]').value`)).toBe('');
       expect(await page.text('[data-testid=record-count]')).toBe('0');
-    }, opts);
+    });
   }, 60000);
 });
