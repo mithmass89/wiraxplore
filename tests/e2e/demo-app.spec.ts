@@ -15,12 +15,17 @@ const EMAIL = 'admin@demo.test';
 const PASSWORD = 'panda123';
 
 /**
- * A real rendered UI needs a real browser by default. `wiraxplore test --engine x`
- * still wins because it sets WIRAXPLORE_ENGINE for the child process.
+ * A rendered UI needs a real browser. Lightpanda has no renderer, and when it runs
+ * inside WSL it cannot reach the HTTP server this spec starts on Windows, so a
+ * lightpanda override is ignored here on purpose.
  */
-const ENGINE = process.env.WIRAXPLORE_ENGINE ?? 'playwright';
+const ENV_ENGINE = process.env.WIRAXPLORE_ENGINE;
+const ENGINE = ENV_ENGINE === 'puppeteer' ? 'puppeteer' : 'playwright';
 const HEADED = process.env.WIRAXPLORE_HEADED === '1';
 // One browser per spec file: launching Chrome per test dominates the runtime.
+const shared = createSharedSession(loadConfig(process.cwd()), { engine: ENGINE, headed: HEADED });
+
+afterAll(() => shared.close());
 
 let server: Server | null = null;
 let demoUrl = '';
@@ -68,10 +73,6 @@ async function addRecord(page: PandaPage, record: { name: string; role?: string;
   if (record.notes) await page.fill('[data-testid=data-notes]', record.notes);
   await page.click('[data-testid=data-submit]');
 }
-
-const shared = createSharedSession(loadConfig(process.cwd()), { engine: ENGINE, headed: HEADED });
-
-afterAll(() => shared.close());
 
 describe('demo app: login and data entry', () => {
   test('login form is shown first', async () => {
