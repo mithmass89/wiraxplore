@@ -8,7 +8,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const DEFAULT_COMMAND = ['wiraxplore']; // resolved from PATH; see wiraxplore.bin.json
+const DEFAULT_COMMAND = ['npx', '-y', 'wiraxplore']; // published package; see wiraxplore.bin.json
 const ENGINE_ENUM = ['lightpanda', 'playwright', 'puppeteer'];
 
 function resolveCommand() {

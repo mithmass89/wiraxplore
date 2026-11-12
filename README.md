@@ -71,36 +71,23 @@ engine-specific behaviour.
 
 ## Quick Start
 
-> **Not on npm yet.** `npm view wiraxplore` returns 404, so every `npx wiraxplore`
-> instruction would fail. Install from a checkout or a `file:` dependency instead:
->
-> ```bash
-> # inside your app
-> pnpm add -D file:../wiraxplore vitest
-> # npm works too: npm i -D ../wiraxplore vitest
-> ```
->
-> pnpm is what CI uses. `npm i -D ../wiraxplore vitest` was verified to install
-> cleanly with npm 10.9.4, but a pre-existing `package-lock.json` that already
-> pins an incompatible `vitest` can fail with
-> `Cannot read properties of null (reading 'edgesOut')`; delete the lockfile and
-> `node_modules` before retrying.
+Published on npm as [`wiraxplore`](https://www.npmjs.com/package/wiraxplore):
 
 ```bash
-# 1. Install
-pnpm install && pnpm build
+# 1. Install into your app
+pnpm add -D wiraxplore vitest
+# or: npm i -D wiraxplore vitest
 
 # 2. Check what works on this machine
-wiraxplore doctor
+npx wiraxplore doctor
 
 # 3. Scaffold into your app
-cd /path/to/your-app
-wiraxplore init
+npx wiraxplore init
 
 # 4. Run
-wiraxplore test                        # engine from wiraxplore.config.yaml
-wiraxplore test --engine playwright     # or force one
-wiraxplore test --engine puppeteer --headed --slow-mo 300   # watch it run
+npx wiraxplore test                        # engine from wiraxplore.config.yaml
+npx wiraxplore test --engine playwright     # or force one
+npx wiraxplore test --engine puppeteer --headed --slow-mo 300   # watch it run
 ```
 
 `--headed` opens a real browser window and `--slow-mo` adds a delay between
@@ -174,7 +161,7 @@ Tools: `panda_status`, `panda_serve_start`, `panda_serve_stop`, `panda_navigate`
 ### Command Code
 
 ```bash
-cmd mcp add wiraxplore -- wiraxplore mcp
+cmd mcp add wiraxplore -- npx -y wiraxplore mcp
 cp skills/wiraxplore/SKILL.md ~/.commandcode/skills/wiraxplore/SKILL.md
 ```
 

@@ -545,7 +545,8 @@ program
     const local = `cmd mcp add wiraxplore -- node "${join(pkgRoot, 'bin', 'wiraxplore.js')}" mcp`;
     log.info('Register the MCP server with Command Code:');
     console.log(`  ${local}`);
-    log.dim('This package is not on npm yet, so use the path above, not npx.');
+    log.dim('Published package (no local checkout needed):');
+    console.log('  cmd mcp add wiraxplore -- npx -y wiraxplore mcp');
     log.dim('Then check it with: cmd mcp list');
   });
 

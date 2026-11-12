@@ -95,11 +95,12 @@ wiraxplore test --headed   # harus membuka jendela Chrome
 ## 3. Setup project (sekali)
 
 ```bash
-# A. paket belum ada di npm — instal dari folder repo
-pnpm add -D file:../wiraxplore vitest
-
-# B. setelah dipublikasikan
+# sudah terbit di npm
 pnpm add -D wiraxplore vitest
+# atau: npm i -D wiraxplore vitest
+
+# pakai tanpa install permanen
+npx wiraxplore --version
 ```
 
 ```bash

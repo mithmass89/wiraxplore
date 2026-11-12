@@ -70,15 +70,12 @@ puppeteer  + playwright   ❌ ditolak
 
 ## 3. Instalasi (sekali per project)
 
-Belum ada di npm. Pilih salah satu:
+Terbit di npm sebagai `wiraxplore`:
 
 ```bash
-# A. dari repo lokal (paling umum saat ini)
-pnpm add -D file:../wiraxplore vitest
-# atau: npm i -D ../wiraxplore
-
-# B. setelah dipublikasikan
 pnpm add -D wiraxplore vitest
+# atau: npm i -D wiraxplore vitest
+# tanpa install: npx wiraxplore --version
 ```
 
 Siapkan project:
