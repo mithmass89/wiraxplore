@@ -1,52 +1,86 @@
 # Requirements / Persyaratan
 
-## For web app projects / Untuk project web app
+## System / Sistem
 
-### System / Sistem
-- Node.js >= 20
-- pnpm or npm
+- Node.js ≥ 20, pnpm atau npm
 - Git
-- Lightpanda binary OR Docker (for Windows)
 
-### Lightpanda install
+Engine yang dipakai menentukan kebutuhan tambahan:
+
+| engine | butuh |
+| --- | --- |
+| `lightpanda` | binary Lightpanda (Linux/macOS) atau WSL2/Docker di Windows |
+| `playwright` | Chrome atau Edge lokal; tanpa perlu `playwright install` |
+| `puppeteer` | Chrome atau Edge lokal |
+
+Chrome/Edge dideteksi otomatis di lokasi standar (Windows, macOS, Linux). Bila
+tidak terdeteksi, set `browser.channel: chrome|msedge` atau
+`browser.executablePath` di `wiraxplore.config.yaml`.
+
+## Lightpanda install
+
 Linux/macOS:
+
 ```bash
 brew install lightpanda-io/browser/lightpanda
-# or
+# atau
 curl -L -o lightpanda https://github.com/lightpanda-io/browser/releases/download/nightly/lightpanda-x86_64-linux
-chmod a+x lightpanda && sudo mv lightpanda /usr/local/bin/
+chmod +x ./lightpanda && sudo mv ./lightpanda /usr/local/bin/
 ```
-Windows: use WSL2 or Docker (`docker run -d -p 127.0.0.1:9222:9222 lightpanda/browser:latest`).
 
-### Project setup / Setup project
-1. Web app must be runnable and reachable (dev server or built).
-2. Set `baseUrl` in `WiraXplore.config.yaml`.
-3. Tests in `tests/e2e` using Playwright API.
-4. Avoid heavy graphical features not supported by Lightpanda (WebGL, etc.) — see Lightpanda status.
+Windows: tidak ada binary native. Pakai WSL2:
 
-### Supported by Lightpanda
-- HTML/CSS, JS (V8), Fetch/XHR, DOM, cookies, click, forms, CDP, WebDriver Bidi.
-- Not: full rendering, WebGL, some advanced APIs. Check WPT status.
+```bash
+wsl --install
+# di dalam WSL:
+curl -L -o lightpanda https://github.com/lightpanda-io/browser/releases/download/nightly/lightpanda-x86_64-linux
+chmod +x ./lightpanda && mkdir -p ~/.local/bin && mv ./lightpanda ~/.local/bin/
+```
 
-## For Flutter projects / Untuk project Flutter
+Atau Docker:
+
+```bash
+docker run -d -p 127.0.0.1:9222:9222 lightpanda/browser:latest
+```
+
+Cek dengan `wiraxplore doctor`. Bila Lightpanda tidak tersedia, gunakan engine
+`playwright` atau `puppeteer`.
+
+## Project setup
+
+1. App harus bisa dijalankan dan dijangkau (dev server atau hasil build).
+2. Set `baseUrl` di `wiraxplore.config.yaml`.
+3. Spec ada di `tests/e2e` memakai API `PandaPage`.
+4. Untuk engine `lightpanda`, hindari fitur grafis (WebGL, canvas pixel,
+   screenshot-diff) karena tidak ada rendering grafis.
+
+## Yang didukung Lightpanda
+
+- HTML/CSS, JavaScript (V8), Fetch/XHR, DOM, cookies, click, form
+- CDP dan WebDriver Bidi
+- Tidak: rendering grafis penuh, WebGL, sebagian API modern
+
+Untuk perilaku visual, jalankan spec yang sama dengan `--engine playwright`.
+
+## Flutter
 
 ### Web (Flutter Web)
-- Build with `flutter build web`.
-- Serve build output (e.g. `python -m http.server` in `build/web`).
-- Point `baseUrl` to served URL.
-- Tests use same Playwright flow against Flutter Web DOM (selectors by `key`/`semantics`).
 
-### Native mobile (Android/iOS)
-- Lightpanda does NOT run on mobile. Use Flutter driver / integration_test.
-- `WiraXplore` Flutter mode is a placeholder; run `flutter drive` separately.
-- Config: `flutter.enabled`, `flutter.deviceId`, `flutter.driverPort`.
+- `flutter build web --web-renderer html`
+- Serve `build/web` (mis. `python -m http.server` di folder itu)
+- Arahkan `baseUrl` ke URL tersebut
+- Pilih selector berdasarkan `key`/semantics; jalankan dengan engine `playwright`
+  karena Flutter Web butuh rendering nyata
 
-### Recommended test strategy
-- Web: WiraXplore via this harness.
-- Mobile: Flutter integration_test + `flutter test integration_test`.
-- Shared: keep page objects/selectors in a common package.
+### Mobile native (Android/iOS)
 
-## Agent integration requirements / Persyaratan integrasi agent
-- OpenCode: plugin installed in `~/.config/opencode/plugins/WiraXplore`; MCP entry in `opencode.jsonc`.
-- Command Code / others: MCP server `WiraXplore mcp` (stdio).
-- Agent must have shell access to run `WiraXplore` commands (optional).
+- Lightpanda tidak berjalan di mobile
+- Pakai `flutter drive` / `integration_test` terpisah
+- Config `flutter.enabled`, `flutter.deviceId`, `flutter.driverPort` masih placeholder
+
+## Integrasi agent
+
+- **Command Code**: `cmd mcp add wiraxplore -- npx -y wiraxplore mcp`, skill di
+  `~/.commandcode/skills/wiraxplore/SKILL.md`
+- **OpenCode**: `wiraxplore plugin:opencode` (plugin + skill + entri MCP)
+- Agent lain: jalankan `wiraxplore mcp` sebagai MCP stdio server

@@ -1,113 +1,137 @@
 # WiraXplore
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.1.0-0f172a?style=for-the-badge" alt="version" />
+  <img src="https://img.shields.io/badge/version-0.2.0-0f172a?style=for-the-badge" alt="version" />
   <img src="https://img.shields.io/badge/license-MIT-16a34a?style=for-the-badge" alt="license" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="node" />
-  <img src="https://img.shields.io/badge/browser-Lightpanda-ff6b35?style=for-the-badge" alt="lightpanda" />
+  <img src="https://img.shields.io/badge/engines-Lightpanda%20%7C%20Playwright%20%7C%20Puppeteer-ff6b35?style=for-the-badge" alt="engines" />
   <img src="https://img.shields.io/badge/tests-Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white" alt="vitest" />
 </p>
 
 <p align="center">
-  <strong>WiraXplore</strong> is a fast, elegant end-to-end testing harness built on top of
-  <a href="https://github.com/lightpanda-io/browser">Lightpanda</a> — the headless browser engineered for AI and automation.
+  <strong>WiraXplore</strong> runs one E2E suite against three browser engines:
+  <a href="https://github.com/lightpanda-io/browser">Lightpanda</a>, Playwright and Puppeteer.
   <br />
-  Test web apps today. Flutter tomorrow. Drive everything from your coding agent.
+  Fast on Lightpanda, faithful on real Chrome, drivable from your coding agent.
 </p>
 
 <p align="center">
   <a href="#quick-start">Quick Start</a> ·
-  <a href="#features">Features</a> ·
-  <a href="#documentation">Documentation</a> ·
+  <a href="#engines">Engines</a> ·
+  <a href="#test-your-app">Test your app</a> ·
   <a href="#agent-integration">Agent Integration</a> ·
-  <a href="#roadmap">Roadmap</a>
+  <a href="#documentation">Documentation</a>
 </p>
 
 ---
 
 ## Why WiraXplore?
 
-Modern web apps are dynamic, JavaScript-driven, and increasingly tested by AI agents. Chrome is too heavy for that world. Lightpanda is 16× lighter and 9× faster — but it needs a developer-friendly layer around it: lifecycle management, a test runner, an agent bridge, and clear documentation.
+Lightpanda is 16× lighter and 9× faster than Chromium, but it is not a Chromium
+replacement: no WebGL, no pixel rendering, and some modern APIs are missing.
+Real browsers are faithful but slow and heavy.
 
-**WiraXplore is that layer.** One CLI. One config. Works for humans and coding agents alike.
+WiraXplore lets you keep **one test suite** and choose the engine per run:
 
-## Features
+```bash
+wiraxplore test --engine lightpanda    # fast feedback loop
+wiraxplore test --engine playwright    # release gate on real Chrome
+```
 
-- **Lightpanda lifecycle** — detect the binary, start/stop the CDP server, check status, with WSL & Docker awareness on Windows.
-- **Playwright adapter** — write tests with the Playwright API, run against Lightpanda over CDP.
-- **MCP server** — expose browser actions to OpenCode, Command Code, and any MCP-capable agent.
-- **OpenCode plugin** — register tools and MCP in one command.
-- **E2E runner** — auto-start the browser, run Vitest specs, tear down.
-- **Flutter-ready** — config, docs, and roadmap for Flutter Web & native mobile.
-- **Bilingual docs** — English and Indonesian.
+## Engines
+
+| engine | browser | driver | mode | best for |
+| --- | --- | --- | --- | --- |
+| `lightpanda` | Lightpanda (Zig) | playwright-core **or** puppeteer-core | CDP | speed, CI, crawlers |
+| `playwright` | local Chrome/Edge | playwright-core | launch | layout, screenshots, full web platform |
+| `puppeteer` | local Chrome/Edge | puppeteer-core | launch | projects already on Puppeteer |
+
+Every engine is exposed through the same `PandaPage` API, so specs do not change
+when you switch. `page.raw` gives you the native driver page when you need
+engine-specific behaviour.
 
 ## Quick Start
 
 ```bash
 # 1. Install
-git clone https://github.com/<you>/WiraXplore.git
-cd WiraXplore
 pnpm install && pnpm build
 
-# 2. Check your environment
-WiraXplore doctor
+# 2. Check what works on this machine
+wiraxplore doctor
 
-# 3. Scaffold into your project
+# 3. Scaffold into your app
 cd /path/to/your-app
-WiraXplore init
+wiraxplore init
 
 # 4. Run
-WiraXplore serve          # start Lightpanda on :9222
-WiraXplore test           # run E2E specs
-WiraXplore stop
+wiraxplore test                        # engine from wiraxplore.config.yaml
+wiraxplore test --engine playwright     # or force one
 ```
 
-## Example Test
+## Test your app
+
+Point the config at your running app and write a spec:
+
+```yaml
+# wiraxplore.config.yaml
+name: my-app
+baseUrl: http://localhost:3000
+browser:
+  engine: lightpanda
+  driver: playwright
+```
 
 ```ts
+// tests/e2e/home.spec.ts
 import { test, expect } from 'vitest';
-import { withPage, loadConfig } from 'WiraXplore';
+import { withPage, loadConfig } from 'wiraxplore';
 
 test('home greets the user', async () => {
-  const cfg = loadConfig(process.cwd());
+  const cfg = loadConfig();
   await withPage(cfg, async (page) => {
-    await page.setContent(`<button id="greet">Hi</button><p id="out"></p>`);
+    await page.goto(cfg.baseUrl!);
+    await page.waitFor('#greet');
+    await page.fill('#name', 'Panda');
     await page.click('#greet');
-    const out = await page.locator('#out').textContent();
-    expect(out).toBe('Hello, Panda');
+    expect(await page.text('#out')).toBe('Hello, Panda');
   });
 });
 ```
 
-## Architecture
-
-```
-┌────────────┐      CDP / Bidi      ┌────────────────┐
-│  Your App  │ ◄──────────────────► │   Lightpanda   │
-└─────┬──────┘                      └────────┬───────┘
-      │                                      │
-      │ Playwright API                       │ MCP (stdio)
-      ▼                                      ▼
-┌────────────┐                      ┌────────────────┐
-│  WiraXplore    │ ◄──────────────────► │ Coding Agents  │
-│  CLI / SDK │                      │ OpenCode, CC   │
-└────────────┘                      └────────────────┘
-```
+`wiraxplore test` starts Lightpanda itself when the engine is `lightpanda` and
+stops it when the run ends. Start your own dev server yourself — WiraXplore does
+not boot your app.
 
 ## Agent Integration
 
+### MCP (Command Code, OpenCode, anything MCP)
+
+```bash
+wiraxplore mcp   # stdio MCP server
+```
+
+Tools: `panda_status`, `panda_serve_start`, `panda_serve_stop`, `panda_navigate`,
+`panda_extract`, `panda_click`, `panda_fill`, `panda_eval`, `panda_wait`,
+`panda_screenshot`, `panda_close`.
+
+### Command Code
+
+```bash
+cmd mcp add wiraxplore -- npx -y wiraxplore mcp
+cp skills/wiraxplore/SKILL.md ~/.commandcode/skills/wiraxplore/SKILL.md
+```
+
 ### OpenCode
+
 ```bash
-WiraXplore plugin:opencode
-# add the printed MCP snippet to ~/.config/opencode/opencode.jsonc
+wiraxplore plugin:opencode
 ```
 
-### Command Code / any MCP agent
-```bash
-WiraXplore mcp   # stdio MCP server
-```
-
-MCP tools: `panda_status`, `panda_serve_start`, `panda_serve_stop`, `panda_navigate`, `panda_extract`, `panda_click`, `panda_fill`, `panda_eval`.
+Installs the plugin into `~/.config/opencode/plugins/wiraxplore`, the skill into
+`~/.config/opencode/skills/wiraxplore`, and registers both the plugin and the MCP
+server in `opencode.json(c)` — using whichever key shape the installed OpenCode
+version expects (`plugin` + flat `mcp` for 1.x, `plugins` + `mcp.servers` for 2.x).
+Verify with `opencode mcp list`.
 
 ## Documentation
 
@@ -119,34 +143,21 @@ MCP tools: `panda_status`, `panda_serve_start`, `panda_serve_stop`, `panda_navig
 
 ## Requirements
 
-**Web apps**
-- Node.js ≥ 20, pnpm/npm
-- Lightpanda binary (Linux/macOS) or WSL2/Docker on Windows
-- A reachable app (`baseUrl`) and tests in `tests/e2e`
+- Node.js ≥ 20
+- **lightpanda engine**: Lightpanda binary on Linux/macOS; WSL2 or Docker on Windows
+- **playwright / puppeteer engines**: a local Chrome or Edge install
+- Your app reachable at `baseUrl`, specs in `tests/e2e`
 
-**Flutter**
-- Flutter Web: `flutter build web --web-renderer html`, serve `build/web`
-- Native mobile: Flutter driver / `integration_test` (Lightpanda doesn't run on mobile)
-
-See [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
+Lightpanda has no native Windows binary. WiraXplore detects it inside WSL and
+talks to it over the forwarded `127.0.0.1:9222`. On Windows without WSL, use the
+`playwright` or `puppeteer` engine instead.
 
 ## Project Status
 
-- ✅ Web E2E on Lightpanda
-- ✅ MCP + OpenCode plugin
+- ✅ Lightpanda / Playwright / Puppeteer engines behind one page API
+- ✅ Playwright and Puppeteer can both drive Lightpanda over CDP
+- ✅ MCP server + OpenCode plugin + Command Code skill
 - 🚧 Flutter driver bridge
-- 🚧 Unified reporting (web + mobile)
-
-## Roadmap
-
-1. `WiraXplore flutter:drive` — native mobile runner bridge.
-2. Visual regression snapshots.
-3. GitHub Action for CI.
-4. Plugin for VS Code.
-
-## Contributing
-
-PRs welcome. Please run `pnpm build && pnpm test` before submitting.
 
 ## License
 
@@ -155,7 +166,5 @@ MIT — see [LICENSE](LICENSE).
 ---
 
 <p align="center">
-  Built with care on top of <a href="https://github.com/lightpanda-io/browser">Lightpanda</a>.
-  <br />
-  <sub>WiraXplore — test the web, beautifully.</sub>
+  Built on top of <a href="https://github.com/lightpanda-io/browser">Lightpanda</a>.
 </p>

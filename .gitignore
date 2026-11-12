@@ -1,5 +1,7 @@
 node_modules/
 dist/
+.wiraxplore.pid
 .WiraXplore.pid
+.wiraxplore.log
 *.log
 .DS_Store

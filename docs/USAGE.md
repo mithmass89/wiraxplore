@@ -1,134 +1,256 @@
 # Usage Guide / Panduan Penggunaan
 
+WiraXplore menjalankan satu suite E2E di atas tiga engine: **Lightpanda**,
+**Playwright**, dan **Puppeteer**. Dokumen ini menjelaskan cara memasang,
+memilih engine, dan menguji app Anda.
+
 ## 1. Install / Instalasi
 
-Requirements: Node.js >= 20, pnpm (or npm). Lightpanda binary (see Requirements).
+Butuh Node.js ≥ 20.
 
 ```bash
-git clone <this-repo>
-cd WiraXplore
 pnpm install
 pnpm build
+node bin/wiraxplore.js doctor
 ```
 
-## 2. Check environment / Cek environment
+## 2. Cek environment
 
 ```bash
-WiraXplore doctor
+wiraxplore doctor
+wiraxplore doctor --json
 ```
 
-On Windows, Lightpanda has no native binary — use WSL2 or Docker. The doctor command reports availability.
+Yang dilaporkan:
 
-## 3. Initialize project / Inisialisasi project
+- platform dan versi Node
+- engine aktif (`lightpanda` | `playwright` | `puppeteer`)
+- binary Lightpanda (termasuk deteksi lewat WSL di Windows)
+- Chrome/Edge lokal untuk engine `playwright`/`puppeteer`
+- apakah CDP server menjawab di `/json/version`
 
-Run inside your web app / Flutter project root:
+## 3. Inisialisasi project
+
+Jalankan di root project app Anda:
 
 ```bash
-WiraXplore init
+wiraxplore init
 ```
 
-Creates `WiraXplore.config.yaml`, `examples/webapp`, `tests/e2e/demo.spec.ts`.
+Menghasilkan `wiraxplore.config.yaml`, `examples/webapp/index.html`, dan
+`tests/e2e/demo.spec.ts`.
 
-## 4. Configure / Konfigurasi
+## 4. Memilih engine
 
-Edit `WiraXplore.config.yaml`:
+Di `wiraxplore.config.yaml`:
 
 ```yaml
-name: my-app
-baseUrl: http://localhost:3000
 browser:
-  mode: cdp
+  engine: lightpanda   # lightpanda | playwright | puppeteer
+  driver: playwright   # playwright | puppeteer
   host: 127.0.0.1
-  port: 9222
-tests:
-  dir: tests/e2e
-  pattern: "**/*.spec.ts"
-  timeoutMs: 30000
+  port: 9222           # port CDP Lightpanda
+  # channel: chrome    # atau msedge (engine playwright/puppeteer)
+  # executablePath: "" # binary browser eksplisit
 ```
 
-## 5. Start Lightpanda / Jalankan Lightpanda
+| engine | browser | driver | kapan dipakai |
+| --- | --- | --- | --- |
+| `lightpanda` | Lightpanda | playwright / puppeteer via CDP | cepat, hemat memori, CI |
+| `playwright` | Chrome/Edge lokal | playwright-core | layout, screenshot, web platform penuh |
+| `puppeteer` | Chrome/Edge lokal | puppeteer-core | project yang sudah pakai Puppeteer |
+
+Tanpa mengubah config:
 
 ```bash
-WiraXplore serve            # CDP on 9222
-WiraXplore serve --protocol bidi   # WebDriver Bidi
-WiraXplore status
-WiraXplore stop
+wiraxplore test --engine lightpanda
+wiraxplore test --engine playwright
+wiraxplore test --engine puppeteer
+wiraxplore test --engine lightpanda --driver puppeteer
 ```
 
-## 6. Write tests / Tulis test
+Override lewat environment: `WIRAXPLORE_ENGINE`, `WIRAXPLORE_DRIVER`,
+`WIRAXPLORE_CDP_URL`, `WIRAXPLORE_BASE_URL`. Ini yang dipakai `wiraxplore test`
+saat meneruskan pilihan engine ke spec.
 
-Use Playwright API connected to Lightpanda:
+## 5. Lifecycle Lightpanda
+
+```bash
+wiraxplore serve                    # CDP di 127.0.0.1:9222
+wiraxplore serve --protocol bidi    # WebDriver Bidi
+wiraxplore status
+wiraxplore stop
+```
+
+`wiraxplore test` menyalakan server otomatis **hanya** untuk engine
+`lightpanda`, lalu mematikannya setelah selesai. Engine `playwright`/`puppeteer`
+meluncurkan Chrome sendiri.
+
+Kalau server tidak mau naik, lihat `.wiraxplore.log`.
+
+## 6. Menulis spec
 
 ```ts
 import { test, expect } from 'vitest';
-import { withPage } from './src/adapters/playwright'; // adjust path
-import { loadConfig } from './src/config';
+import { withPage, loadConfig } from 'wiraxplore';
 
 test('home loads', async () => {
-  const cfg = loadConfig(process.cwd());
+  const cfg = loadConfig();
   await withPage(cfg, async (page) => {
     await page.goto(cfg.baseUrl!);
-    await expect(page).toHaveTitle(/My App/);
+    await page.waitFor('#title');
+    expect(await page.title()).toMatch(/My App/);
   });
 });
 ```
 
-## 7. Run tests / Jalankan test
+API `PandaPage`:
 
-```bash
-WiraXplore test
+| method | keterangan |
+| --- | --- |
+| `goto(url, opts?)` | buka URL |
+| `setContent(html)` | isi halaman dengan HTML |
+| `click(selector)` | klik elemen |
+| `fill(selector, value)` | isi input |
+| `text(selector)` | teks elemen |
+| `html(selector?)` | innerHTML elemen atau seluruh halaman |
+| `eval(fnOrExpr, arg?)` | jalankan JS |
+| `waitFor(selector, opts?)` | tunggu selector |
+| `title()` / `url()` | judul dan URL |
+| `screenshot(opts?)` | PNG (buffer atau file) |
+| `close()` | tutup halaman |
+| `raw` | page native driver (playwright/puppeteer) |
+
+Untuk override engine di satu test:
+
+```ts
+await withPage(cfg, async (page) => { /* ... */ }, { engine: 'playwright' });
 ```
 
-Auto-starts server if not running, runs Vitest in `tests/e2e`, stops server after.
+## 7. Menjalankan test
 
-## 8. Coding agents / Agent coding
+```bash
+wiraxplore test                       # engine dari config
+wiraxplore test --filter home         # hanya file yang cocok
+wiraxplore test --engine playwright    # engine lain
+wiraxplore test --no-serve             # jangan auto-start CDP
+wiraxplore test --ui                   # vitest watch
+```
+
+Atau langsung lewat vitest:
+
+```bash
+pnpm vitest run tests/e2e
+WIRAXPLORE_ENGINE=playwright pnpm vitest run tests/e2e
+```
+
+## 8. Integrasi coding agent
+
+### Command Code
+
+```bash
+cmd mcp add wiraxplore -- npx -y wiraxplore mcp
+# skill
+mkdir -p ~/.commandcode/skills/wiraxplore
+cp skills/wiraxplore/SKILL.md ~/.commandcode/skills/wiraxplore/SKILL.md
+```
 
 ### OpenCode
 
 ```bash
-WiraXplore plugin:opencode
-# then add MCP entry to ~/.config/opencode/opencode.jsonc (printed by command)
-opencode mcp add   # or edit config manually
+wiraxplore plugin:opencode
 ```
 
-MCP config snippet:
+Memasang plugin ke `~/.config/opencode/plugins/wiraxplore`, skill ke
+`~/.config/opencode/skills/wiraxplore`, lalu mendaftarkan plugin dan MCP server
+di `opencode.json(c)`. Restart OpenCode setelahnya.
+
+Perbedaan versi yang ditangani otomatis:
+
+| | OpenCode 1.x | OpenCode 2.x |
+| --- | --- | --- |
+| key config | `"plugin": []` | `"plugins": []` |
+| MCP | `"mcp": { "nama": {...} }` | `"mcp": { "servers": { "nama": {...} } }` |
+| entrypoint plugin | export `./server` | export `./v2` (`Plugin.define`) |
+
+Cek dengan `opencode mcp list` — entri `wiraxplore` harus `✓ connected`.
+
+### MCP server manual
+
+```bash
+wiraxplore mcp   # stdio
+```
+
+Config Command Code (`.mcp.json` / `~/.commandcode/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "wiraxplore": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "wiraxplore", "mcp"]
+    }
+  }
+}
+```
+
+Config OpenCode 2.x (`opencode.json`):
+
 ```json
 {
   "mcp": {
     "servers": {
-      "WiraXplore": {
+      "wiraxplore": {
         "type": "local",
-        "command": ["WiraXplore", "mcp"]
+        "command": ["npx", "-y", "wiraxplore", "mcp"]
       }
     }
   }
 }
 ```
 
-### Command Code / other MCP agents
+OpenCode 1.x memakai `"mcp": { "wiraxplore": { ... } }` tanpa `servers`.
 
-```bash
-WiraXplore mcp   # stdio MCP server
-```
+## 9. Tools MCP
 
-Point agent MCP config to `WiraXplore mcp`.
+| tool | fungsi |
+| --- | --- |
+| `panda_status` | platform, engine, binary, probe CDP |
+| `panda_serve_start` / `panda_serve_stop` | lifecycle Lightpanda |
+| `panda_navigate` | buka URL → title, URL, teks; terima `engine` |
+| `panda_extract` | teks atau HTML, bisa dibatasi selector |
+| `panda_click` / `panda_fill` | interaksi |
+| `panda_eval` | jalankan JS di halaman |
+| `panda_wait` | tunggu selector |
+| `panda_screenshot` | PNG halaman |
+| `panda_close` | tutup sesi browser bersama |
 
-## 9. MCP tools / Tools MCP
+Sesi dipakai bersama antar tool. Mengirim `engine` pada `panda_navigate` akan
+mengganti engine untuk sesi berikutnya.
 
-- `panda_status` — binary + server status.
-- `panda_serve_start` / `panda_serve_stop`
-- `panda_navigate` — `{ url, waitUntil? }`
-- `panda_extract` — `{ selector? }`
-- `panda_click` — `{ selector }`
-- `panda_fill` — `{ selector, value }`
-- `panda_eval` — `{ expression }`
+## 10. Alur menguji app (rekomendasi)
 
-## 10. Flutter (preview)
-
-See `docs/FLUTTER.md`. Web tests can target Flutter Web builds; native mobile uses Flutter driver (separate).
+1. Nyalakan dev server app Anda (`pnpm dev`) dan pastikan `baseUrl` benar.
+2. `wiraxplore doctor` — pastikan engine siap.
+3. `wiraxplore init` bila belum ada config/spec.
+4. Tulis spec pada `tests/e2e/*.spec.ts` memakai API `PandaPage`.
+5. `wiraxplore test --engine lightpanda` untuk iterasi cepat.
+6. `wiraxplore test --engine playwright` sebelum merge/rilis.
+7. `wiraxplore stop` bila Anda menyalakan server sendiri.
 
 ## Troubleshooting
 
-- Binary not found: run `WiraXplore doctor`, follow install hint.
-- Connection refused on 9222: ensure `WiraXplore serve` running.
-- Windows: use WSL2/Docker; native binary unavailable.
+| Gejala | Penyebab / solusi |
+| --- | --- |
+| `browser.engine unknown` | nilai `engine` salah; pakai `lightpanda`, `playwright`, atau `puppeteer` |
+| CDP tidak menjawab | `wiraxplore serve`, cek `.wiraxplore.log` |
+| Lightpanda tidak ditemukan (Windows) | install di WSL2 atau pakai engine `playwright`/`puppeteer` |
+| Chrome tidak ditemukan | set `browser.channel: chrome`/`msedge` atau `browser.executablePath` |
+| Test lulus di Lightpanda tapi gagal di Chrome | perilaku spesifik browser; jalankan `--engine playwright` |
+| Halaman kosong di Lightpanda | API belum didukung (WebGL, canvas); pakai engine `playwright` |
+
+## 11. Flutter (preview)
+
+Lihat `docs/FLUTTER.md`. Flutter Web bisa diuji seperti web biasa; mobile native
+memakai `flutter drive` terpisah karena Lightpanda tidak berjalan di mobile.

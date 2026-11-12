@@ -1,10 +1,16 @@
 {
-  "name": "WiraXplore-opencode",
-  "version": "0.1.0",
+  "name": "opencode-wiraxplore",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "OpenCode plugin for WiraXplore testing",
-  "exports": { ".": "./src/index.ts" },
-  "files": ["src", "skills"],
-  "dependencies": { "@opencode/plugin": "latest" }
+  "description": "OpenCode plugin exposing WiraXplore browser testing tools",
+  "exports": {
+    ".": "./src/server.ts",
+    "./server": "./src/server.ts",
+    "./v2": "./src/index.ts"
+  },
+  "files": ["src"],
+  "dependencies": {
+    "@opencode/plugin": "latest"
+  }
 }
