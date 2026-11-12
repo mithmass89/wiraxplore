@@ -79,6 +79,7 @@ For OpenCode 2.x, use `"plugins"` and nest the server under `"mcp": { "servers":
 - **`Plugin does not expose a server entrypoint`** — the installed copy is missing
   `src/server.ts`. Re-run `wiraxplore plugin:opencode`.
 - **Plugin loaded but no tools** — check `wiraxplore.bin.json` points at an
-  existing `wiraxplore.js`; otherwise the plugin falls back to `npx -y wiraxplore`.
+  existing `wiraxplore.js`. Without it the plugin falls back to `wiraxplore` on your
+  PATH, so install the CLI globally or link it.
 - **MCP shows failed** — run the command from `opencode mcp list` manually; a
   missing Lightpanda binary only breaks the `lightpanda` engine, not the MCP server.

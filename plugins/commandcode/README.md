@@ -8,7 +8,7 @@ skill so the agent knows how to use it.
 From the project that contains your app:
 
 ```bash
-cmd mcp add wiraxplore -- npx -y wiraxplore mcp
+cmd mcp add wiraxplore -- wiraxplore mcp
 ```
 
 Local checkout, without publishing:

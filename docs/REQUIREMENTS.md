@@ -80,7 +80,7 @@ Untuk perilaku visual, jalankan spec yang sama dengan `--engine playwright`.
 
 ## Integrasi agent
 
-- **Command Code**: `cmd mcp add wiraxplore -- npx -y wiraxplore mcp`, skill di
+- **Command Code**: `cmd mcp add wiraxplore -- wiraxplore mcp`, skill di
   `~/.commandcode/skills/wiraxplore/SKILL.md`
 - **OpenCode**: `wiraxplore plugin:opencode` (plugin + skill + entri MCP)
 - Agent lain: jalankan `wiraxplore mcp` sebagai MCP stdio server

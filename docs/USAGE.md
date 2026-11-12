@@ -161,13 +161,18 @@ API `PandaPage`:
 | `goto(url, opts?)` | buka URL |
 | `setContent(html)` | isi halaman dengan HTML |
 | `click(selector)` | klik elemen |
-| `fill(selector, value)` | isi input |
+| `fill(selector, value, opts?)` | set value langsung + dispatch input/change (tanpa key event) |
+| `type(selector, text, opts?)` | ketikan nyata (keydown/keypress), untuk mask & handler |
+| `press(key)` | tekan satu tombol: `Enter`, `Tab`, `Escape` |
+| `value(selector)` | nilai `input`/`textarea` |
 | `text(selector)` | teks elemen |
 | `html(selector?)` | innerHTML elemen atau seluruh halaman |
 | `eval(fnOrExpr, arg?)` | jalankan JS |
-| `waitFor(selector, opts?)` | tunggu selector |
+| `waitFor(selector, opts?)` | tunggu selector; keempat state identik di semua engine |
+| `waitForFunction(fn, arg?, opts?)` | tunggu kondisi non-selector (pengganti polling manual) |
+| `setViewport({width,height})` | ubah ukuran viewport saat test berjalan |
 | `title()` / `url()` | judul dan URL |
-| `screenshot(opts?)` | PNG (buffer atau file) |
+| `screenshot(opts?)` | PNG halaman, atau satu elemen bila `selector` diisi |
 | `close()` | tutup halaman |
 | `raw` | page native driver (playwright/puppeteer) |
 
@@ -199,7 +204,7 @@ WIRAXPLORE_ENGINE=playwright pnpm vitest run tests/e2e
 ### Command Code
 
 ```bash
-cmd mcp add wiraxplore -- npx -y wiraxplore mcp
+cmd mcp add wiraxplore -- wiraxplore mcp
 # skill
 mkdir -p ~/.commandcode/skills/wiraxplore
 cp skills/wiraxplore/SKILL.md ~/.commandcode/skills/wiraxplore/SKILL.md
@@ -238,8 +243,8 @@ Config Command Code (`.mcp.json` / `~/.commandcode/mcp.json`):
   "mcpServers": {
     "wiraxplore": {
       "transport": "stdio",
-      "command": "npx",
-      "args": ["-y", "wiraxplore", "mcp"]
+      "command": "wiraxplore",
+      "args": ["mcp"]
     }
   }
 }
@@ -253,7 +258,7 @@ Config OpenCode 2.x (`opencode.json`):
     "servers": {
       "wiraxplore": {
         "type": "local",
-        "command": ["npx", "-y", "wiraxplore", "mcp"]
+        "command": ["wiraxplore", "mcp"]
       }
     }
   }

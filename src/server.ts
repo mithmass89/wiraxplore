@@ -1,6 +1,6 @@
 // src/server.ts
-import { spawn } from 'node:child_process';
-import { existsSync, writeFileSync, readFileSync, unlinkSync, openSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { existsSync, writeFileSync, readFileSync, unlinkSync, openSync, statSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { findLightpanda } from './binary.js';
 import { log } from './utils/logger.js';
@@ -8,6 +8,16 @@ import type { ProjectConfig } from './config.js';
 
 const PIDFILE = '.wiraxplore.pid';
 const LOGFILE = '.wiraxplore.log';
+const MAX_LOG_BYTES = 2 * 1024 * 1024;
+
+/** Keep one previous log; an endless append is a leak on long-lived servers. */
+function rotateLog(): void {
+  try {
+    if (!existsSync(LOGFILE)) return;
+    if (statSync(LOGFILE).size < MAX_LOG_BYTES) return;
+    renameSync(LOGFILE, `${LOGFILE}.1`);
+  } catch {}
+}
 
 export interface ServerHandle {
   pid: number;
@@ -66,17 +76,19 @@ export async function startServer(cfg: ProjectConfig, opts?: { protocol?: string
 
   let cmd = info.path;
   let fullArgs = args;
-  if (info.path.startsWith('wsl:')) {
+  const viaWsl = info.path.startsWith('wsl:');
+  if (viaWsl) {
     cmd = 'wsl';
     fullArgs = [info.path.slice(4), ...args];
   }
 
+  rotateLog();
   const out = openSync(LOGFILE, 'a');
   const child = spawn(cmd, fullArgs, { detached: true, stdio: ['ignore', out, out] });
   child.unref();
   const pid = child.pid ?? 0;
 
-  writeFileSync(PIDFILE, JSON.stringify({ pid, host, port, protocol, cmd, args: fullArgs, engine: 'lightpanda' }), 'utf8');
+  writeFileSync(PIDFILE, JSON.stringify({ pid, host, port, protocol, cmd, args: fullArgs, engine: 'lightpanda', viaWsl }), 'utf8');
 
   const ready = await waitForCdp(url);
   if (!ready) {
@@ -85,17 +97,38 @@ export async function startServer(cfg: ProjectConfig, opts?: { protocol?: string
   log.ok(`Lightpanda serve started (pid ${pid}) at ${host}:${port} [${protocol}]`);
 
   const stop = () => {
-    try { process.kill(pid); } catch {}
+    killServerProcess({ pid, viaWsl, port });
     try { if (existsSync(PIDFILE)) unlinkSync(PIDFILE); } catch {}
   };
   return { pid, host, port, protocol, stop };
 }
 
+/**
+ * Killing wsl.exe leaves the Lightpanda child running inside the VM, so for WSL we
+ * ask the VM to terminate its own process; TCP and a probe confirm it is really gone.
+ */
+function killServerProcess(info: { pid: number; viaWsl?: boolean; port?: number }): void {
+  if (info.viaWsl) {
+    spawnSync('wsl', ['-e', 'sh', '-lc', "pkill -f 'lightpanda serve' || true"], { timeout: 10000 });
+  }
+  try { process.kill(info.pid); } catch {}
+  if (info.port) {
+    spawnSync(process.platform === 'win32' ? 'powershell' : 'sh', process.platform === 'win32'
+      ? ['-NoProfile', '-Command', `Get-NetTCPConnection -LocalPort ${info.port} -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }`]
+      : ['-c', `command -v fuser >/dev/null && fuser -k ${info.port}/tcp || true`],
+    { timeout: 10000 });
+  }
+}
+
 export function stopServer(): boolean {
-  if (!existsSync(PIDFILE)) return false;
+  if (!existsSync(PIDFILE)) {
+    // No pidfile, but a stale listener may still hold the port.
+    spawnSync('wsl', ['-e', 'sh', '-lc', "pkill -f 'lightpanda serve' || true"], { timeout: 10000 });
+    return false;
+  }
   try {
     const data = JSON.parse(readFileSync(PIDFILE, 'utf8'));
-    try { process.kill(data.pid); } catch {}
+    killServerProcess({ pid: data.pid, viaWsl: data.viaWsl, port: data.port });
     unlinkSync(PIDFILE);
     log.ok('Lightpanda serve stopped');
     return true;

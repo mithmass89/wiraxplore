@@ -194,12 +194,26 @@ program
       else log.warn(`${plan.driver} needs Chrome/Edge — set browser.channel or browser.executablePath`);
     }
 
-    if (serverInfo.cdp) log.ok(`CDP ready at ${serverInfo.host ?? '127.0.0.1'}:${serverInfo.port ?? 9222} (${String(serverInfo.version?.Browser ?? 'unknown')})`);
-    else log.warn('CDP server not answering — run `wiraxplore serve` (not needed for playwright/puppeteer engines)');
+    if (serverInfo.cdp) {
+      log.ok(`CDP ready at ${serverInfo.host ?? '127.0.0.1'}:${serverInfo.port ?? 9222} (${String(serverInfo.version?.Browser ?? 'unknown')})`);
+    } else if (plan.engine === 'lightpanda') {
+      // The active engine cannot talk to a browser without this endpoint, so say it
+      // as a failure instead of a note next to a reassuring "lightpanda ✓".
+      log.error(`CDP not reachable at ${serverInfo.host ?? '127.0.0.1'}:${serverInfo.port ?? 9222} — the "lightpanda" engine will fail every test`);
+      log.dim('Fix: run `wiraxplore serve`, or switch to --engine playwright / puppeteer.');
+    } else {
+      log.ok('CDP not needed — the active engine launches its own browser');
+    }
 
     log.step(`active engine: ${plan.engine} via ${plan.driver} (${plan.mode})`);
+
     if (process.platform === 'win32') {
       log.ok(wslOut?.status === 0 ? 'WSL available' : 'WSL not available (needed for lightpanda on Windows)');
+      if (lp?.source === 'wsl') {
+        log.warn('Lightpanda runs inside WSL: "localhost" in the browser is WSL, not Windows.');
+        log.dim('If baseUrl points at an app on Windows, use the WSL gateway IP instead of localhost:');
+        log.dim('  WIRAXPLORE_BASE_URL=http://<gateway-ip>:<port> (see `ip route show default` inside WSL)');
+      }
     }
   });
 
@@ -280,6 +294,16 @@ program
       }
     }
 
+    if (plan.engine === 'lightpanda') {
+      // Fail once, here, instead of letting fifteen specs each report ECONNREFUSED.
+      const st = await statusWithProbe();
+      if (!st.cdp) {
+        log.error(`CDP not reachable at ${plan.cdpUrl} — refusing to run ${plan.engine} tests`);
+        log.dim('Run `wiraxplore serve` first, or use --engine playwright / puppeteer.');
+        process.exit(1);
+      }
+    }
+
     const env = {
       ...process.env,
       WIRAXPLORE_ENGINE: plan.engine,
@@ -289,10 +313,16 @@ program
       ...(plan.slowMo ? { WIRAXPLORE_SLOWMO: String(plan.slowMo) } : {}),
     };
     const testDir = cfg.tests?.dir ?? 'tests/e2e';
+    const timeoutMs = cfg.tests?.timeoutMs ?? 30000;
     const vitest = join(process.cwd(), 'node_modules', 'vitest', 'vitest.mjs');
-    const args = existsSync(vitest)
-      ? [vitest, opts.ui ? '' : 'run', opts.filter ?? testDir, ...(cfg.tests?.args ?? [])].filter(Boolean)
-      : ['-y', 'vitest', opts.ui ? '' : 'run', opts.filter ?? testDir, ...(cfg.tests?.args ?? [])].filter(Boolean);
+    const common = [
+      opts.ui ? '' : 'run',
+      opts.filter ?? testDir,
+      '--testTimeout',
+      String(timeoutMs),
+      ...(cfg.tests?.args ?? []),
+    ].filter(Boolean);
+    const args = existsSync(vitest) ? [vitest, ...common] : ['-y', 'vitest', ...common];
     const cmd = existsSync(vitest) ? process.execPath : 'npx';
 
     const visual = plan.headless ? 'headless' : `headed${plan.slowMo ? ` slowMo=${plan.slowMo}ms` : ''}`;
@@ -481,8 +511,8 @@ program
         'Quick check:',
         '',
         '```bash',
-        'npx wiraxplore doctor    # or: node ../wiraxplore/bin/wiraxplore.js doctor',
-        'npx wiraxplore test',
+        'pnpm exec wiraxplore doctor',
+        'pnpm exec wiraxplore test',
         '```',
         '',
       ].join('\n');
@@ -515,7 +545,7 @@ program
     const local = `cmd mcp add wiraxplore -- node "${join(pkgRoot, 'bin', 'wiraxplore.js')}" mcp`;
     log.info('Register the MCP server with Command Code:');
     console.log(`  ${local}`);
-    log.dim('Or, once published: cmd mcp add wiraxplore -- npx -y wiraxplore mcp');
+    log.dim('This package is not on npm yet, so use the path above, not npx.');
     log.dim('Then check it with: cmd mcp list');
   });
 

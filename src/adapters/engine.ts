@@ -21,6 +21,9 @@ export interface EngineOptions {
   baseUrl?: string;
   headless: boolean;
   slowMo?: number;
+  viewport?: { width: number; height: number };
+  /** Only used when the engine launches Chrome itself with a debugging port. */
+  debugPort?: number;
 }
 
 export interface BrowserSession {
@@ -39,6 +42,7 @@ export interface PlanOverride {
   headed?: boolean;
   headless?: boolean;
   slowMo?: number;
+  viewport?: { width: number; height: number };
 }
 
 function asEngine(value: string): EngineName {
@@ -131,6 +135,9 @@ export function engineOptions(cfg: ProjectConfig, override?: PlanOverride): Engi
     baseUrl: cfg.baseUrl,
     headless: plan.headless,
     slowMo: plan.slowMo,
+    viewport: override?.viewport ?? cfg.browser?.viewport ?? { width: 1280, height: 720 },
+    // Opt-in only: a default port would collide when tests launch Chrome in parallel.
+    debugPort: cfg.browser?.debugPort,
   };
 }
 

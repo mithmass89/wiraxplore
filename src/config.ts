@@ -22,6 +22,8 @@ export interface ProjectConfig {
     executablePath?: string;
     lightpandaBin?: string;
     headless?: boolean;
+    /** Viewport applied to every page. Keep it explicit so engines never differ. */
+    viewport?: { width: number; height: number };
     /** Delay between driver actions in ms, to make a headed run watchable. */
     slowMo?: number;
     obeyRobots?: boolean;
@@ -62,8 +64,8 @@ const DEFAULTS: ProjectConfig = {
     mode: 'cdp',
     host: '127.0.0.1',
     port: 9222,
-    debugPort: 9333,
     headless: true,
+    viewport: { width: 1280, height: 720 },
     obeyRobots: false,
   },
   tests: { dir: 'tests/e2e', pattern: '**/*.spec.ts', timeoutMs: 30000 },
@@ -149,7 +151,10 @@ browser:
   mode: cdp            # cdp | bidi | mcp
   host: 127.0.0.1
   port: 9222
-  debugPort: 9333      # used when the engine drives Chrome itself
+  viewport:            # identical on every engine, so layout tests cannot drift
+    width: 1280
+    height: 720
+  # debugPort: 9333    # opt-in remote debugging port for launched Chrome
   # channel: chrome    # or msedge; omit to auto-detect
   # executablePath: "" # explicit browser binary
   headless: true
@@ -159,7 +164,8 @@ browser:
 tests:
   dir: tests/e2e
   pattern: "**/*.spec.ts"
-  timeoutMs: 30000
+  timeoutMs: 30000     # passed to vitest --testTimeout
+  # args: ["--reporter=verbose"]
 
 flutter:
   enabled: false

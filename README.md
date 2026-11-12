@@ -27,16 +27,35 @@
 
 ## Why WiraXplore?
 
-Lightpanda is 16× lighter and 9× faster than Chromium, but it is not a Chromium
-replacement: no WebGL, no pixel rendering, and some modern APIs are missing.
-Real browsers are faithful but slow and heavy.
+Lightpanda is much lighter and faster than Chromium **for what it is built for**:
+fetching pages, parsing large DOMs, and crawling. That is Lightpanda's own
+benchmark, measured on 933 pages over the network — not on a JavaScript-heavy
+single-page app.
+
+Measured on a real SPA (Tailwind CDN, client-side routing), Lightpanda was
+*slower* than headless Chrome: 77s vs 64s for the same suite. Reasons: no CDN
+cache warm-up, no GPU rasterisation, and every byte parsed by html5ever.
+
+So the honest split:
+
+| workload | pick |
+| --- | --- |
+| static pages, large DOM, crawling, CI smoke tests | `lightpanda` |
+| JavaScript-heavy SPA, canvas, charts, visual checks | `playwright` / `puppeteer` |
+
+Lightpanda is not a Chromium replacement: no WebGL, no pixel rendering, and some
+modern APIs are missing.
 
 WiraXplore lets you keep **one test suite** and choose the engine per run:
 
 ```bash
-wiraxplore test --engine lightpanda    # fast feedback loop
+wiraxplore test --engine lightpanda    # cheap smoke run
 wiraxplore test --engine playwright    # release gate on real Chrome
 ```
+
+The suite is engine-agnostic on purpose, and `tests/e2e/parity.spec.ts` enforces
+it: wait states, fill/type, viewport and element screenshots are asserted on every
+engine, so a divergence fails the build instead of surprising you.
 
 ## Engines
 
@@ -51,6 +70,21 @@ when you switch. `page.raw` gives you the native driver page when you need
 engine-specific behaviour.
 
 ## Quick Start
+
+> **Not on npm yet.** `npm view wiraxplore` returns 404, so every `npx wiraxplore`
+> instruction would fail. Install from a checkout or a `file:` dependency instead:
+>
+> ```bash
+> # inside your app
+> pnpm add -D file:../wiraxplore vitest
+> # npm works too: npm i -D ../wiraxplore vitest
+> ```
+>
+> pnpm is what CI uses. `npm i -D ../wiraxplore vitest` was verified to install
+> cleanly with npm 10.9.4, but a pre-existing `package-lock.json` that already
+> pins an incompatible `vitest` can fail with
+> `Cannot read properties of null (reading 'edgesOut')`; delete the lockfile and
+> `node_modules` before retrying.
 
 ```bash
 # 1. Install
@@ -140,7 +174,7 @@ Tools: `panda_status`, `panda_serve_start`, `panda_serve_stop`, `panda_navigate`
 ### Command Code
 
 ```bash
-cmd mcp add wiraxplore -- npx -y wiraxplore mcp
+cmd mcp add wiraxplore -- wiraxplore mcp
 cp skills/wiraxplore/SKILL.md ~/.commandcode/skills/wiraxplore/SKILL.md
 ```
 

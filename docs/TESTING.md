@@ -103,8 +103,8 @@ pnpm add -D wiraxplore vitest
 ```
 
 ```bash
-npx wiraxplore init     # config + demo spec + skill agent
-npx wiraxplore doctor   # cek kesiapan
+wiraxplore init     # config + demo spec + skill agent
+wiraxplore doctor   # cek kesiapan
 ```
 
 Struktur yang dihasilkan:
@@ -129,12 +129,20 @@ baseUrl: http://localhost:3000
 browser:
   engine: playwright     # lightpanda | playwright | puppeteer
   driver: playwright     # playwright | puppeteer
-  headless: true         # false = jendela terbuka (default headful saat dev)
+  headless: true         # false = jendela terbuka
+  viewport:              # dipakai SEMUA engine; mencegah lolos di satu engine saja
+    width: 1280
+    height: 720
   slowMo: 0              # ms antar aksi, untuk menonton alur
+  # debugPort: 9333      # opt-in, hanya untuk attach ke Chrome yang diluncurkan
   channel: chrome        # chrome | msedge (opsional)
   # executablePath: ""   # binary browser eksplisit
   host: 127.0.0.1
   port: 9222             # port CDP Lightpanda
+
+tests:
+  dir: tests/e2e
+  timeoutMs: 30000       # benar-benar diteruskan ke vitest --testTimeout
 ```
 
 Override tanpa mengubah file:
@@ -213,18 +221,28 @@ menjalankan server HTTP kecil sendiri untuk alasan ini.
 
 ## 6. API `PandaPage`
 
+Kontraknya **sama di semua engine**, dan itu diuji: `tests/e2e/parity.spec.ts`
+(wait states, fill/type/press, waitForFunction, screenshot elemen) dan
+`tests/e2e/viewport.spec.ts` (breakpoint layout). Kalau ada yang berbeda, build
+gagal — bukan Anda yang menemukannya nanti.
+
 | method | keterangan |
 | --- | --- |
 | `goto(url, opts?)` | buka URL; `waitUntil`: `load`/`domcontentloaded`/`networkidle0`/`networkidle2` |
 | `setContent(html)` | isi HTML mentah (tanpa server; tanpa localStorage) |
 | `click(selector)` | klik elemen |
-| `fill(selector, value)` | kosongkan lalu isi input |
+| `fill(selector, value, opts?)` | set value langsung + dispatch input/change (tanpa key event) |
+| `type(selector, text, opts?)` | ketikan nyata (keydown/keypress), untuk mask & handler |
+| `press(key)` | tekan satu tombol: `Enter`, `Tab`, `Escape` |
+| `value(selector)` | nilai `input`/`textarea` |
 | `text(selector)` | `textContent` elemen |
 | `html(selector?)` | `innerHTML` elemen atau seluruh dokumen |
 | `eval(fnOrExpr, arg?)` | jalankan JS, hasil dikembalikan |
-| `waitFor(selector, opts?)` | tunggu selector (`visible`/`hidden`/`attached`/`detached`) |
+| `waitFor(selector, opts?)` | tunggu selector; keempat state identik di semua engine |
+| `waitForFunction(fn, arg?, opts?)` | tunggu kondisi non-selector (pengganti polling manual) |
+| `setViewport({width,height})` | ubah ukuran viewport saat test berjalan |
 | `title()` / `url()` | judul dan URL |
-| `screenshot(opts?)` | PNG (`path`, `fullPage`, `type`) |
+| `screenshot(opts?)` | PNG halaman, atau satu elemen bila `selector` diisi |
 | `close()` | tutup halaman |
 | `raw` | page native Playwright/Puppeteer |
 
@@ -271,6 +289,9 @@ wiraxplore mcp    # stdio MCP server
 | `panda_navigate` | `url`, `waitUntil?`, `engine?`, `includeText?` | buka URL |
 | `panda_extract` | `selector?`, `format?` | baca teks/HTML |
 | `panda_click` / `panda_fill` | `selector`, `value?` | interaksi |
+| `panda_type` / `panda_press` | `selector`, `text` / `key` | ketikan nyata & tombol |
+| `panda_wait_for_function` | `expression` | tunggu kondisi non-selector |
+| `panda_viewport` | `width`, `height` | ubah viewport |
 | `panda_eval` | `expression` | jalankan JS |
 | `panda_wait` | `selector`, `state?`, `timeoutMs?` | tunggu selector |
 | `panda_screenshot` | `fullPage?` | kirim PNG |

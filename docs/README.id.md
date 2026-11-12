@@ -65,7 +65,7 @@ test('greet', async () => {
 
 ```bash
 # Command Code
-cmd mcp add wiraxplore -- npx -y wiraxplore mcp
+cmd mcp add wiraxplore -- wiraxplore mcp
 
 # OpenCode
 wiraxplore plugin:opencode

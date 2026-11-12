@@ -11,7 +11,7 @@ dan untuk manusia yang mengawasi agent tersebut.
 
 > Simpan file ini di `.agents/skills/wiraxplore/SKILL.md` pada project Anda.
 > Command Code dan OpenCode sama-sama membaca folder `.agents/skills/`.
-> Alternatif cepat: jalankan `npx wiraxplore agent:init --agents-md`.
+> Alternatif cepat: jalankan `wiraxplore agent:init --agents-md`.
 
 ---
 
@@ -84,9 +84,9 @@ pnpm add -D wiraxplore vitest
 Siapkan project:
 
 ```bash
-npx wiraxplore init                     # config + demo spec + skill agent
-npx wiraxplore agent:init --agents-md   # kalau project sudah punya config
-npx wiraxplore doctor                   # cek engine & browser
+wiraxplore init                     # config + demo spec + skill agent
+wiraxplore agent:init --agents-md   # kalau project sudah punya config
+wiraxplore doctor                   # cek engine & browser
 ```
 
 `init` membuat:
@@ -190,13 +190,18 @@ await withPage(cfg, async (page) => { /* ... */ }, { engine: 'playwright' });
 | `goto(url, opts?)` | buka URL; `opts.waitUntil`: `load`/`domcontentloaded`/`networkidle0`/`networkidle2` |
 | `setContent(html)` | isi halaman dengan HTML mentah (tanpa server) |
 | `click(selector)` | klik elemen |
-| `fill(selector, value)` | kosongkan lalu isi input |
+| `fill(selector, value, opts?)` | set value langsung + dispatch input/change (tanpa key event) |
+| `type(selector, text, opts?)` | ketikan nyata (keydown/keypress), untuk mask & handler |
+| `press(key)` | tekan satu tombol: `Enter`, `Tab`, `Escape` |
+| `value(selector)` | nilai `input`/`textarea` |
 | `text(selector)` | `textContent` elemen |
 | `html(selector?)` | `innerHTML` elemen, atau seluruh dokumen bila tanpa selector |
 | `eval(fnOrExpr, arg?)` | jalankan JS di halaman, hasil dikembalikan |
-| `waitFor(selector, opts?)` | tunggu selector; `state`: `attached`/`visible`/`hidden`/`detached` |
+| `waitFor(selector, opts?)` | tunggu selector; keempat state identik di semua engine |
+| `waitForFunction(fn, arg?, opts?)` | tunggu kondisi non-selector (pengganti polling manual) |
+| `setViewport({width,height})` | ubah ukuran viewport saat test berjalan |
 | `title()` / `url()` | judul dan URL aktif |
-| `screenshot(opts?)` | PNG: `{ path, fullPage, type }` |
+| `screenshot(opts?)` | PNG halaman, atau satu elemen bila `selector` diisi |
 | `close()` | tutup halaman |
 | `raw` | objek page asli Playwright/Puppeteer untuk kebutuhan khusus |
 
@@ -278,7 +283,7 @@ Jangan memakai `--headed` di CI; tidak ada display dan test akan gagal.
 Jalankan `wiraxplore mcp` sebagai MCP server stdio, atau daftarkan sekali:
 
 ```bash
-cmd mcp add wiraxplore -- npx -y wiraxplore mcp    # Command Code
+cmd mcp add wiraxplore -- wiraxplore mcp    # Command Code
 ```
 
 | tool | parameter | fungsi |

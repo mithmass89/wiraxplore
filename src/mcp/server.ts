@@ -12,7 +12,12 @@ import { engineOptions, launchSession, planEngine, resolveExecutable, ENGINE_NAM
 import { log } from '../utils/logger.js';
 import { pathToFileURL } from 'node:url';
 
-const cfg = loadConfig(process.cwd());
+const CWD = process.cwd();
+
+/** Reload on demand: editing wiraxplore.config.yaml must affect a live MCP session. */
+function currentConfig() {
+  return loadConfig(CWD);
+}
 
 const engineProp = { type: 'string', enum: ENGINE_NAMES };
 
@@ -75,11 +80,35 @@ const tools = [
   },
   {
     name: 'panda_fill',
-    description: 'Type a value into an input by CSS selector.',
+    description: 'Set an input value directly (dispatches input + change). Identical on every engine.',
     inputSchema: {
       type: 'object',
       properties: { selector: { type: 'string' }, value: { type: 'string' } },
       required: ['selector', 'value'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'panda_type',
+    description: 'Type with real keystrokes, for masks and key handlers. Slower than panda_fill.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        selector: { type: 'string' },
+        text: { type: 'string' },
+        delayMs: { type: 'number', description: 'Delay between keystrokes' },
+      },
+      required: ['selector', 'text'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'panda_press',
+    description: 'Press a key on the focused element, e.g. Enter, Tab, Escape.',
+    inputSchema: {
+      type: 'object',
+      properties: { key: { type: 'string' } },
+      required: ['key'],
       additionalProperties: false,
     },
   },
@@ -95,7 +124,7 @@ const tools = [
   },
   {
     name: 'panda_wait',
-    description: 'Wait until a CSS selector is present (or hidden) on the current page.',
+    description: 'Wait for a CSS selector. All four states behave identically on every engine.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -108,11 +137,34 @@ const tools = [
     },
   },
   {
-    name: 'panda_screenshot',
-    description: 'Capture a PNG screenshot of the current page and return it as an image.',
+    name: 'panda_wait_for_function',
+    description: 'Wait until a JS predicate returns truthy. Use this instead of polling.',
     inputSchema: {
       type: 'object',
-      properties: { fullPage: { type: 'boolean' } },
+      properties: {
+        expression: { type: 'string', description: 'Expression or arrow fn body, e.g. "document.querySelectorAll(\'li\').length > 3"' },
+        timeoutMs: { type: 'number' },
+      },
+      required: ['expression'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'panda_viewport',
+    description: 'Set the page viewport, e.g. to test a responsive breakpoint.',
+    inputSchema: {
+      type: 'object',
+      properties: { width: { type: 'number' }, height: { type: 'number' } },
+      required: ['width', 'height'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'panda_screenshot',
+    description: 'Capture a PNG of the page, or of one element when a selector is given.',
+    inputSchema: {
+      type: 'object',
+      properties: { fullPage: { type: 'boolean' }, selector: { type: 'string' } },
       additionalProperties: false,
     },
   },
@@ -133,8 +185,9 @@ async function getSession(engine?: string): Promise<BrowserSession> {
     await resetSession();
   }
   if (!sessionPromise) {
+    const cfg = currentConfig();
     sessionEngine = planEngine(cfg, { engine }).engine;
-    sessionPromise = launchSession(engineOptions(cfg, { engine })).catch((e) => {
+    sessionPromise = launchSession(engineOptions(currentConfig(), { engine })).catch((e) => {
       sessionPromise = null;
       sessionEngine = undefined;
       throw e;
@@ -171,6 +224,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
   return withLock(async () => {
     try {
       if (name === 'panda_status') {
+        const cfg = currentConfig();
         const plan = planEngine(cfg);
         const bin = findLightpanda();
         const exe = plan.mode === 'launch' ? resolveExecutable({ executablePath: cfg.browser?.executablePath, channel: cfg.browser?.channel }) : undefined;
@@ -187,7 +241,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
       }
 
       if (name === 'panda_serve_start') {
-        const handle = await startServer(cfg, { protocol: (args.protocol as string) ?? 'cdp' });
+        const handle = await startServer(currentConfig(), { protocol: (args.protocol as string) ?? 'cdp' });
         return text(`started pid=${handle.pid} ${handle.host}:${handle.port}`);
       }
 
@@ -240,6 +294,18 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
         return text('filled');
       }
 
+      if (name === 'panda_type') {
+        await page.type(String(args.selector), String(args.text), {
+          delay: typeof args.delayMs === 'number' ? args.delayMs : 0,
+        });
+        return text('typed');
+      }
+
+      if (name === 'panda_press') {
+        await page.press(String(args.key));
+        return text(`pressed ${args.key}`);
+      }
+
       if (name === 'panda_eval') {
         const result = await page.eval(String(args.expression));
         return text(typeof result === 'string' ? result : JSON.stringify(result));
@@ -253,8 +319,23 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
         return text('found');
       }
 
+      if (name === 'panda_wait_for_function') {
+        const result = await page.waitForFunction(String(args.expression), undefined, {
+          timeout: typeof args.timeoutMs === 'number' ? args.timeoutMs : undefined,
+        });
+        return text(typeof result === 'string' ? result : JSON.stringify(result));
+      }
+
+      if (name === 'panda_viewport') {
+        await page.setViewport({ width: Number(args.width), height: Number(args.height) });
+        return text(`${args.width}x${args.height}`);
+      }
+
       if (name === 'panda_screenshot') {
-        const shot = await page.screenshot({ fullPage: args.fullPage === true });
+        const shot = await page.screenshot({
+          fullPage: args.fullPage === true,
+          selector: args.selector ? String(args.selector) : undefined,
+        });
         const base64 = typeof shot === 'string' ? shot : Buffer.from(shot).toString('base64');
         return { content: [{ type: 'image' as const, data: base64, mimeType: 'image/png' }] };
       }
