@@ -13,7 +13,7 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "wiraxplore": "./bin/wiraxplore.js"
+    "wiraxplore": "bin/wiraxplore.js"
   },
   "files": [
     "bin",
