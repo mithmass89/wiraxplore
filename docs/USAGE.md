@@ -1,5 +1,8 @@
 # Usage Guide / Panduan Penggunaan
 
+> Dokumen ini adalah **acuan utama** pemakaian. Peta dokumen lain ada di
+> [DOCS.md](DOCS.md).
+
 WiraXplore menjalankan satu suite E2E di atas tiga engine: **Lightpanda**,
 **Playwright**, dan **Puppeteer**. Dokumen ini menjelaskan cara memasang,
 memilih engine, dan menguji app Anda.

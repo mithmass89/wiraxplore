@@ -135,8 +135,12 @@ Verify with `opencode mcp list`.
 
 ## Documentation
 
+Start with [docs/DOCS.md](docs/DOCS.md) to see which document answers what.
+The main usage reference is [docs/USAGE.md](docs/USAGE.md).
+
 | Doc | EN | ID |
 | --- | --- | --- |
+| Doc index | [docs/DOCS.md](docs/DOCS.md) | — |
 | Usage | [docs/USAGE.md](docs/USAGE.md) | [docs/README.id.md](docs/README.id.md) |
 | Requirements | [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | — |
 | Flutter | [docs/FLUTTER.md](docs/FLUTTER.md) | — |

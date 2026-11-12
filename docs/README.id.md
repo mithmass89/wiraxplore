@@ -76,6 +76,7 @@ wiraxplore mcp
 
 ## Dokumentasi
 
-- [Cara pakai](USAGE.md)
+- [Peta dokumentasi](DOCS.md) — mulai dari sini
+- [Cara pakai](USAGE.md) — acuan utama
 - [Requirement](REQUIREMENTS.md)
 - [Panduan Flutter](FLUTTER.md)
