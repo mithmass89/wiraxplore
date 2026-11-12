@@ -22,6 +22,8 @@ export interface ProjectConfig {
     executablePath?: string;
     lightpandaBin?: string;
     headless?: boolean;
+    /** Delay between driver actions in ms, to make a headed run watchable. */
+    slowMo?: number;
     obeyRobots?: boolean;
   };
   tests?: {
@@ -88,6 +90,8 @@ function applyEnvOverrides(cfg: ProjectConfig): ProjectConfig {
   const driver = process.env.WIRAXPLORE_DRIVER as Driver | undefined;
   const cdpUrl = process.env.WIRAXPLORE_CDP_URL;
   const baseUrl = process.env.WIRAXPLORE_BASE_URL;
+  const headed = process.env.WIRAXPLORE_HEADED;
+  const slowMo = process.env.WIRAXPLORE_SLOWMO;
   if (engine) cfg.browser = { ...cfg.browser, engine };
   if (driver) cfg.browser = { ...cfg.browser, driver };
   if (cdpUrl) {
@@ -97,7 +101,16 @@ function applyEnvOverrides(cfg: ProjectConfig): ProjectConfig {
     } catch {}
   }
   if (baseUrl) cfg.baseUrl = baseUrl;
+  if (headed !== undefined) cfg.browser = { ...cfg.browser, headless: !isTruthy(headed) };
+  if (slowMo !== undefined && slowMo !== '') {
+    const n = Number(slowMo);
+    if (Number.isFinite(n) && n >= 0) cfg.browser = { ...cfg.browser, slowMo: n };
+  }
   return cfg;
+}
+
+function isTruthy(value: string): boolean {
+  return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
 }
 
 function merge(base: ProjectConfig, over: ProjectConfig): ProjectConfig {
@@ -140,6 +153,7 @@ browser:
   # channel: chrome    # or msedge; omit to auto-detect
   # executablePath: "" # explicit browser binary
   headless: true
+  # slowMo: 250        # delay between actions (ms) when headless is false
   obeyRobots: false
 
 tests:

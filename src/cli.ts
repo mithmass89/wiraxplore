@@ -5,6 +5,7 @@ import { findLightpanda, installHint } from './binary.js';
 import { startServer, stopServer, statusWithProbe, logFile } from './server.js';
 import { runMcpServer } from './mcp/server.js';
 import { engineReport, planEngine, resolveExecutable, ENGINE_NAMES, DRIVER_NAMES } from './adapters/engine.js';
+import { pm2Available, writeEcosystem, requirePm2, runPm2, resolveCliCommand, ECOSYSTEM_FILE, PM2_APP_NAME } from './pm2.js';
 import { log } from './utils/logger.js';
 import { detectPlatform } from './utils/platform.js';
 import { spawnSync } from 'node:child_process';
@@ -206,8 +207,18 @@ program
   .command('serve')
   .description('Start the Lightpanda CDP server')
   .option('-p, --protocol <p>', 'cdp|bidi|both', 'cdp')
+  .option('--host <host>', 'listen address (default: config or 127.0.0.1)')
+  .option('--port <port>', 'listen port (default: config or 9222)', Number)
   .action(async (opts) => {
-    const cfg = loadConfig();
+    const base = loadConfig();
+    const cfg: typeof base = {
+      ...base,
+      browser: {
+        ...base.browser,
+        ...(opts.host ? { host: opts.host } : {}),
+        ...(Number.isFinite(opts.port) ? { port: opts.port } : {}),
+      },
+    };
     const h = await startServer(cfg, { protocol: opts.protocol });
     log.ok(`serving at ${h.host}:${h.port} (pid ${h.pid}) — log: ${logFile()}`);
     log.dim('Press Ctrl+C to stop.');
@@ -238,10 +249,27 @@ program
   .option('-e, --engine <engine>', `override engine (${ENGINE_NAMES.join('|')})`)
   .option('-d, --driver <driver>', `override driver (${DRIVER_NAMES.join('|')})`)
   .option('-f, --filter <pattern>', 'only run specs matching this filter')
+  .option('--headed', 'show the browser window (playwright/puppeteer engines only)')
+  .option('--slow-mo <ms>', 'delay between driver actions, to watch a headed run', Number)
   .option('--ui', 'run vitest in watch UI mode')
   .action(async (opts) => {
     const cfg = loadConfig();
-    const plan = planEngine(cfg, { engine: opts.engine, driver: opts.driver });
+    const requestedEngine = opts.engine ?? cfg.browser?.engine ?? 'lightpanda';
+
+    // --headed asks for a visible window. Lightpanda has none, so pick a real
+    // browser instead of silently running headless with no window on screen.
+    let engine = requestedEngine;
+    if (opts.headed === true && requestedEngine === 'lightpanda') {
+      engine = 'playwright';
+      log.warn('lightpanda has no window — --headed switched to the "playwright" engine (local Chrome/Edge)');
+    }
+
+    const plan = planEngine(cfg, {
+      engine,
+      driver: opts.driver,
+      headed: opts.headed === true,
+      slowMo: Number.isFinite(opts.slowMo) ? opts.slowMo : undefined,
+    });
     let started = false;
 
     if (plan.engine === 'lightpanda' && opts.serve !== false) {
@@ -257,6 +285,8 @@ program
       WIRAXPLORE_ENGINE: plan.engine,
       WIRAXPLORE_DRIVER: plan.driver,
       ...(plan.cdpUrl ? { WIRAXPLORE_CDP_URL: plan.cdpUrl } : {}),
+      ...(plan.headless ? {} : { WIRAXPLORE_HEADED: '1' }),
+      ...(plan.slowMo ? { WIRAXPLORE_SLOWMO: String(plan.slowMo) } : {}),
     };
     const testDir = cfg.tests?.dir ?? 'tests/e2e';
     const vitest = join(process.cwd(), 'node_modules', 'vitest', 'vitest.mjs');
@@ -265,7 +295,8 @@ program
       : ['-y', 'vitest', opts.ui ? '' : 'run', opts.filter ?? testDir, ...(cfg.tests?.args ?? [])].filter(Boolean);
     const cmd = existsSync(vitest) ? process.execPath : 'npx';
 
-    log.step(`running vitest [${plan.engine} via ${plan.driver}] in ${testDir}`);
+    const visual = plan.headless ? 'headless' : `headed${plan.slowMo ? ` slowMo=${plan.slowMo}ms` : ''}`;
+    log.step(`running vitest [${plan.engine} via ${plan.driver}, ${visual}] in ${testDir}`);
     const r = spawnSync(cmd, args, { stdio: 'inherit', env });
     if (started) stopServer();
     process.exit(r.status ?? 1);
@@ -274,6 +305,85 @@ program
 program.command('mcp').description('Run the MCP server (stdio) for coding agents').action(async () => {
   await runMcpServer();
 });
+
+const pm2 = program.command('pm2').description(`Keep the Lightpanda server running under pm2`);
+
+pm2
+  .command('init')
+  .description(`Write ${ECOSYSTEM_FILE} for the current project`)
+  .option('--host <host>', 'CDP host', '127.0.0.1')
+  .option('--port <port>', 'CDP port', '9222')
+  .option('--protocol <p>', 'cdp|bidi|both', 'cdp')
+  .option('--force', 'overwrite an existing ecosystem file')
+  .action((opts) => {
+    const cwd = process.cwd();
+    const file = join(cwd, ECOSYSTEM_FILE);
+    if (existsSync(file) && !opts.force) {
+      log.warn(`${ECOSYSTEM_FILE} already exists (use --force to overwrite)`);
+      return;
+    }
+    const written = writeEcosystem(cwd, { host: opts.host, port: Number(opts.port), protocol: opts.protocol });
+    log.ok(`wrote ${written}`);
+    log.dim(`Next: pm2 start ${ECOSYSTEM_FILE} && pm2 save`);
+    if (!pm2Available()) {
+      log.warn('pm2 is not installed yet — npm i -g pm2');
+      log.dim(`Command the file runs: ${resolveCliCommand(cwd).join(' ')} serve`);
+    }
+  });
+
+pm2
+  .command('start')
+  .description('Start the ecosystem file, then run `pm2 save` so it survives reboot')
+  .option('--host <host>', 'CDP host', '127.0.0.1')
+  .option('--port <port>', 'CDP port', '9222')
+  .action((opts) => {
+    requirePm2();
+    const cwd = process.cwd();
+    if (!existsSync(join(cwd, ECOSYSTEM_FILE))) {
+      const written = writeEcosystem(cwd, { host: opts.host, port: Number(opts.port) });
+      log.ok(`wrote ${written}`);
+    }
+    const start = runPm2(['start', ECOSYSTEM_FILE, '--update-env'], cwd);
+    if (!start.ok) {
+      log.error('pm2 start failed');
+      process.exit(1);
+    }
+    const save = runPm2(['save'], cwd);
+    log.ok(save.ok ? 'started and saved — `pm2 resurrect` will restore it after reboot' : 'started, but `pm2 save` failed');
+    log.dim('Check with: pm2 status');
+  });
+
+pm2
+  .command('save')
+  .description('Persist the running process list (`pm2 save`)')
+  .action(() => {
+    requirePm2();
+    const result = runPm2(['save'], process.cwd());
+    if (!result.ok) {
+      log.error('pm2 save failed');
+      process.exit(1);
+    }
+    log.ok('pm2 save — process list persisted');
+    log.dim(`After reboot: pm2 resurrect (or install startup with pm2 startup)`);
+  });
+
+pm2
+  .command('status')
+  .description('Show the WiraXplore process as pm2 sees it')
+  .action(() => {
+    requirePm2();
+    runPm2(['describe', PM2_APP_NAME], process.cwd());
+  });
+
+pm2
+  .command('stop')
+  .description('Stop and remove the WiraXplore process from pm2')
+  .action(() => {
+    requirePm2();
+    runPm2(['delete', PM2_APP_NAME], process.cwd());
+    runPm2(['save'], process.cwd());
+    log.ok(`pm2 process ${PM2_APP_NAME} removed and saved`);
+  });
 
 program
   .command('plugin:opencode')

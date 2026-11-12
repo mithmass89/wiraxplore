@@ -19,13 +19,26 @@ export interface EngineOptions {
   cdpUrl?: string;
   executablePath?: string;
   baseUrl?: string;
+  headless: boolean;
+  slowMo?: number;
 }
 
 export interface BrowserSession {
   page: PandaPage;
   engine: EngineName;
   driver: DriverName;
+  headless: boolean;
   close: () => Promise<void>;
+}
+
+export interface PlanOverride {
+  engine?: string;
+  driver?: string;
+  cdpUrl?: string;
+  /** Force a visible browser window. Ignored by the lightpanda engine. */
+  headed?: boolean;
+  headless?: boolean;
+  slowMo?: number;
 }
 
 function asEngine(value: string): EngineName {
@@ -77,17 +90,21 @@ export function resolveExecutable(opts: { executablePath?: string; channel?: str
   return channelExecutable('chrome') ?? channelExecutable('msedge');
 }
 
-export function planEngine(cfg: ProjectConfig, override?: { engine?: string; driver?: string; cdpUrl?: string }): EnginePlan {
+export function planEngine(cfg: ProjectConfig, override?: PlanOverride): EnginePlan {
   const engine = asEngine(override?.engine ?? cfg.browser?.engine ?? 'lightpanda');
   const driver = asDriver(
     override?.driver
     ?? (engine === 'lightpanda' ? cfg.browser?.driver ?? 'playwright' : engine),
   );
+  const headless = override?.headed
+    ? false
+    : override?.headless ?? cfg.browser?.headless ?? true;
+  const slowMo = override?.slowMo ?? cfg.browser?.slowMo;
 
   if (engine === 'lightpanda') {
     const host = cfg.browser?.host ?? '127.0.0.1';
     const port = cfg.browser?.port ?? 9222;
-    return { engine, driver, mode: 'cdp', cdpUrl: override?.cdpUrl ?? `http://${host}:${port}` };
+    return { engine, driver, mode: 'cdp', cdpUrl: override?.cdpUrl ?? `http://${host}:${port}`, headless: true };
   }
 
   return {
@@ -95,10 +112,12 @@ export function planEngine(cfg: ProjectConfig, override?: { engine?: string; dri
     driver,
     mode: 'launch',
     executablePath: cfg.browser?.executablePath ?? cfg.browser?.channel,
+    headless,
+    slowMo,
   };
 }
 
-export function engineOptions(cfg: ProjectConfig, override?: { engine?: string; driver?: string; cdpUrl?: string }): EngineOptions {
+export function engineOptions(cfg: ProjectConfig, override?: PlanOverride): EngineOptions {
   const plan = planEngine(cfg, override);
   const executablePath = plan.mode === 'launch'
     ? resolveExecutable({ executablePath: cfg.browser?.executablePath, channel: cfg.browser?.channel })
@@ -110,22 +129,24 @@ export function engineOptions(cfg: ProjectConfig, override?: { engine?: string; 
     cdpUrl: plan.cdpUrl,
     executablePath,
     baseUrl: cfg.baseUrl,
+    headless: plan.headless,
+    slowMo: plan.slowMo,
   };
 }
 
 export async function launchSession(opts: EngineOptions): Promise<BrowserSession> {
   if (opts.driver === 'puppeteer') {
     const s = await connectPuppeteer(opts);
-    return { page: s.page, engine: opts.engine, driver: opts.driver, close: s.close };
+    return { page: s.page, engine: opts.engine, driver: opts.driver, headless: opts.headless, close: s.close };
   }
   const s = await connectPlaywright(opts);
-  return { page: s.page, engine: opts.engine, driver: opts.driver, close: s.close };
+  return { page: s.page, engine: opts.engine, driver: opts.driver, headless: opts.headless, close: s.close };
 }
 
 export async function withPage<T>(
   cfg: ProjectConfig = loadConfig(),
   fn: (page: PandaPage) => Promise<T>,
-  override?: { engine?: string; driver?: string; cdpUrl?: string },
+  override?: PlanOverride,
 ): Promise<T> {
   const session = await launchSession(engineOptions(cfg, override));
   try {

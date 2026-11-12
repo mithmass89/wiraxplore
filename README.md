@@ -66,7 +66,30 @@ wiraxplore init
 # 4. Run
 wiraxplore test                        # engine from wiraxplore.config.yaml
 wiraxplore test --engine playwright     # or force one
+wiraxplore test --engine puppeteer --headed --slow-mo 300   # watch it run
 ```
+
+`--headed` opens a real browser window and `--slow-mo` adds a delay between
+actions, so a login/input flow is visible end to end. Only the `playwright` and
+`puppeteer` engines have a UI — Lightpanda renders nothing.
+
+A ready-made single-file demo lives in `examples/webapp/index.html`, with its spec
+in `tests/e2e/demo-app.spec.ts`:
+
+```bash
+wiraxplore test --filter demo-app --engine puppeteer --headed --slow-mo 300
+```
+
+Keep the CDP server running in the background with pm2:
+
+```bash
+wiraxplore pm2 start    # writes ecosystem.config.cjs, starts, then `pm2 save`
+wiraxplore pm2 status
+wiraxplore pm2 stop
+```
+
+Because `pm2 save` runs automatically, `pm2 resurrect` restores the server after a
+reboot.
 
 ## Test your app
 
@@ -141,6 +164,7 @@ The main usage reference is [docs/USAGE.md](docs/USAGE.md).
 | Doc | EN | ID |
 | --- | --- | --- |
 | Doc index | [docs/DOCS.md](docs/DOCS.md) | — |
+| How it works + headless/headful | [docs/TESTING.md](docs/TESTING.md) | — |
 | Usage | [docs/USAGE.md](docs/USAGE.md) | [docs/README.id.md](docs/README.id.md) |
 | Requirements | [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | — |
 | Flutter | [docs/FLUTTER.md](docs/FLUTTER.md) | — |

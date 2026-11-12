@@ -80,6 +80,7 @@ saat meneruskan pilihan engine ke spec.
 
 ```bash
 wiraxplore serve                    # CDP di 127.0.0.1:9222
+wiraxplore serve --host 0.0.0.0 --port 9223
 wiraxplore serve --protocol bidi    # WebDriver Bidi
 wiraxplore status
 wiraxplore stop
@@ -90,6 +91,52 @@ wiraxplore stop
 meluncurkan Chrome sendiri.
 
 Kalau server tidak mau naik, lihat `.wiraxplore.log`.
+
+### Menjalankan server permanen dengan pm2
+
+```bash
+wiraxplore pm2 init          # tulis ecosystem.config.cjs
+wiraxplore pm2 start         # pm2 start + pm2 save
+wiraxplore pm2 status        # pm2 describe wiraxplore-lightpanda
+wiraxplore pm2 save          # ulangi setelah mengubah proses
+wiraxplore pm2 stop          # pm2 delete + save
+```
+
+`pm2 start` otomatis menjalankan `pm2 save`, jadi daftar proses bertahan setelah
+reboot (`pm2 resurrect`, atau pasang `pm2 startup` sekali). Ecosystem yang
+dihasilkan memanggil entrypoint JS (`node .../bin/wiraxplore.js serve`) agar
+portabel, dengan log di `.wiraxplore.out.log` dan `.wiraxplore.err.log`.
+
+### Mode ber-UI (headed) untuk menonton test
+
+Hanya untuk engine `playwright` dan `puppeteer`; Lightpanda tidak punya UI.
+
+```bash
+wiraxplore test --engine puppeteer --headed
+wiraxplore test --engine playwright --headed --slow-mo 400
+```
+
+Atau lewat config / environment:
+
+```yaml
+browser:
+  engine: puppeteer
+  headless: false
+  slowMo: 250
+```
+
+```bash
+WIRAXPLORE_HEADED=1 WIRAXPLORE_SLOWMO=400 pnpm exec vitest run tests/e2e
+```
+
+Test yang sama tetap lulus headless di CI.
+
+Contoh siap pakai: `examples/webapp/index.html` (login → input data, satu file)
+dengan spec di `tests/e2e/demo-app.spec.ts`.
+
+```bash
+wiraxplore test --filter demo-app --engine puppeteer --headed --slow-mo 300
+```
 
 ## 6. Menulis spec
 

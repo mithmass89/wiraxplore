@@ -93,8 +93,10 @@ export async function connectPuppeteer(opts: EngineOptions): Promise<{ page: Pan
   } else {
     browser = await puppeteer.launch({
       executablePath: opts.executablePath,
-      headless: true,
+      headless: opts.headless,
       defaultViewport: null,
+      ...(opts.headless ? {} : { args: ['--start-maximized'] }),
+      ...(opts.slowMo ? { slowMo: opts.slowMo } : {}),
     });
   }
 

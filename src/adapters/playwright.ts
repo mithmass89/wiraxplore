@@ -69,7 +69,11 @@ export async function connectPlaywright(opts: EngineOptions): Promise<{ page: Pa
   if (opts.cdpUrl) {
     browser = await chromium.connectOverCDP(opts.cdpUrl);
   } else {
-    browser = await chromium.launch({ executablePath: resolveExecutable(opts), headless: true });
+    browser = await chromium.launch({
+      executablePath: resolveExecutable(opts),
+      headless: opts.headless,
+      ...(opts.slowMo ? { slowMo: opts.slowMo } : {}),
+    });
   }
   const context: BrowserContext = browser.contexts()[0] ?? (await browser.newContext());
   const page = await context.newPage();

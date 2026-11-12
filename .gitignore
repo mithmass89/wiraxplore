@@ -3,5 +3,8 @@ dist/
 .wiraxplore.pid
 .WiraXplore.pid
 .wiraxplore.log
+.wiraxplore.out.log
+.wiraxplore.err.log
+.pm2/
 *.log
 .DS_Store

@@ -230,6 +230,7 @@ WIRAXPLORE_ENGINE=playwright pnpm exec vitest run tests/e2e
 
 ```bash
 wiraxplore serve                   # CDP di 127.0.0.1:9222
+wiraxplore serve --host 0.0.0.0 --port 9223
 wiraxplore serve --protocol bidi   # WebDriver Bidi
 wiraxplore status                  # probe /json/version
 wiraxplore stop
@@ -241,6 +242,34 @@ sebaiknya masuk `.gitignore`.
 Di Windows tidak ada binary Lightpanda native. WiraXplore mendeteksinya di WSL
 (`wsl:/home/<user>/.local/bin/lightpanda`) dan bicara lewat `127.0.0.1:9222`.
 Kalau WSL tidak tersedia, pakai engine `playwright` atau `puppeteer`.
+
+### pm2 (server permanen)
+
+```bash
+wiraxplore pm2 init     # tulis ecosystem.config.cjs
+wiraxplore pm2 start    # pm2 start + pm2 save
+wiraxplore pm2 status   # pm2 describe wiraxplore-lightpanda
+wiraxplore pm2 save     # setelah perubahan
+wiraxplore pm2 stop     # pm2 delete + save
+```
+
+`pm2 start` sudah menjalankan `pm2 save`, jadi proses kembali setelah
+`pm2 resurrect`. Ecosystem memakai entrypoint JS (`node .../bin/wiraxplore.js serve`).
+
+### Mode ber-UI (headed)
+
+Hanya engine `playwright`/`puppeteer`. Lightpanda tidak punya UI, jadi
+`--headed` diabaikan (dengan peringatan).
+
+```bash
+wiraxplore test --engine puppeteer --headed
+wiraxplore test --engine playwright --headed --slow-mo 400
+```
+
+Config: `browser.headless: false` dan `browser.slowMo: 250`.
+Env: `WIRAXPLORE_HEADED=1`, `WIRAXPLORE_SLOWMO=400`.
+
+Jangan memakai `--headed` di CI; tidak ada display dan test akan gagal.
 
 ---
 

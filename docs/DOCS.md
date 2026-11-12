@@ -7,6 +7,7 @@ Satu halaman untuk tahu dokumen mana yang harus dibaca.
 | Kalau Anda... | Baca |
 | --- | --- |
 | baru pertama kali / ingin gambaran singkat | [../README.md](../README.md) |
+| ingin tahu cara kerja app + headless/headful | **[TESTING.md](TESTING.md)** |
 | ingin langkah lengkap menguji app | **[USAGE.md](USAGE.md)** ← acuan utama |
 | ingin versi Bahasa Indonesia | [README.id.md](README.id.md) |
 | menyiapkan mesin, browser, atau CI | [REQUIREMENTS.md](REQUIREMENTS.md) |
