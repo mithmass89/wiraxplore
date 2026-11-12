@@ -1,9 +1,14 @@
 # WiraXplore (Bahasa Indonesia)
 
+[![npm](https://img.shields.io/npm/v/wiraxplore?style=flat-square&logo=npm)](https://www.npmjs.com/package/wiraxplore)
+[![release](https://img.shields.io/github/v/release/mithmass89/wiraxplore?style=flat-square)](https://github.com/mithmass89/wiraxplore/releases)
+
 Harness E2E yang menjalankan satu suite test di atas tiga engine browser:
 [Lightpanda](https://github.com/lightpanda-io/browser), **Playwright**, dan
-**Puppeteer**. Cepat di Lightpanda, akurat di Chrome asli, dan bisa dikendalikan
+**Puppeteer**. Murah di Lightpanda, akurat di Chrome asli, dan bisa dikendalikan
 dari coding agent (Command Code, OpenCode) lewat MCP.
+
+Terbit di npm: `pnpm add -D wiraxplore vitest`.
 
 ## Fitur
 

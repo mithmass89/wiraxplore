@@ -1,18 +1,18 @@
 # WiraXplore
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.2.0-0f172a?style=for-the-badge" alt="version" />
+  <a href="https://www.npmjs.com/package/wiraxplore"><img src="https://img.shields.io/npm/v/wiraxplore?style=for-the-badge&logo=npm&logoColor=white" alt="npm version" /></a>
   <img src="https://img.shields.io/badge/license-MIT-16a34a?style=for-the-badge" alt="license" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="node" />
   <img src="https://img.shields.io/badge/engines-Lightpanda%20%7C%20Playwright%20%7C%20Puppeteer-ff6b35?style=for-the-badge" alt="engines" />
-  <img src="https://img.shields.io/badge/tests-Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white" alt="vitest" />
+  <a href="https://github.com/mithmass89/wiraxplore/releases"><img src="https://img.shields.io/github/v/release/mithmass89/wiraxplore?style=for-the-badge" alt="release" /></a>
 </p>
 
 <p align="center">
   <strong>WiraXplore</strong> runs one E2E suite against three browser engines:
   <a href="https://github.com/lightpanda-io/browser">Lightpanda</a>, Playwright and Puppeteer.
   <br />
-  Fast on Lightpanda, faithful on real Chrome, drivable from your coding agent.
+  Cheap on Lightpanda, faithful on real Chrome, drivable from your coding agent.
 </p>
 
 <p align="center">
@@ -203,10 +203,15 @@ talks to it over the forwarded `127.0.0.1:9222`. On Windows without WSL, use the
 
 ## Project Status
 
+- ✅ Published on npm as [`wiraxplore`](https://www.npmjs.com/package/wiraxplore) (v0.2.0)
 - ✅ Lightpanda / Playwright / Puppeteer engines behind one page API
 - ✅ Playwright and Puppeteer can both drive Lightpanda over CDP
-- ✅ MCP server + OpenCode plugin + Command Code skill
+- ✅ `PandaPage` contract enforced by tests on every engine (wait states, fill/type, viewport)
+- ✅ MCP server (15 tools) + OpenCode plugin + Command Code skill
+- ✅ `--headed` runs, pm2 lifecycle for the CDP server
 - 🚧 Flutter driver bridge
+
+See the [release notes](https://github.com/mithmass89/wiraxplore/releases/tag/v0.2.0).
 
 ## License
 

@@ -1,0 +1,77 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Packed tarball runs
+        run: |
+          npm pack
+          mkdir -p /tmp/pkg-probe
+          cd /tmp/pkg-probe
+          npm init -y > /dev/null
+          npm i "$GITHUB_WORKSPACE"/wiraxplore-*.tgz > /dev/null
+          test "$(npx wiraxplore --version)" = "$(node -p "require('$GITHUB_WORKSPACE/package.json').version")"
+          npx wiraxplore init
+          test -f wiraxplore.config.yaml
+          test -f .agents/skills/wiraxplore/SKILL.md
+
+  engines:
+    # The engine contract needs a real Chrome. The WSL-only and demo specs are
+    # local-only, so this job runs exactly the two cross-engine suites.
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Install Chromium for playwright-core
+        run: pnpm exec playwright-core install --with-deps chromium
+
+      - name: Engine parity and viewport
+        run: pnpm exec vitest run tests/e2e/parity.spec.ts tests/e2e/viewport.spec.ts
+        env:
+          WIRAXPLORE_ENGINE: playwright

@@ -3,7 +3,9 @@ import { connectPuppeteer, launchPuppeteerBrowser } from './puppeteer.js';
 import { findLightpanda, binaryVersion } from '../binary.js';
 import { loadConfig, type ProjectConfig } from '../config.js';
 import { detectPlatform } from '../utils/platform.js';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { homedir } from 'node:os';
 import type { PandaPage } from './page.js';
 import type { DriverName, EngineName, EnginePlan } from './types.js';
 
@@ -84,6 +86,42 @@ function channelExecutable(channel: string): string | undefined {
   return undefined;
 }
 
+/**
+ * Chromium downloaded by `playwright-core install`. CI images often have no system
+ * Chrome, so without this the engine cannot launch even though a browser is present.
+ */
+function playwrightChromium(): string | undefined {
+  const root = process.env.PLAYWRIGHT_BROWSERS_PATH
+    ?? (process.platform === 'win32'
+      ? join(process.env.LOCALAPPDATA ?? '', 'ms-playwright')
+      : process.platform === 'darwin'
+        ? join(homedir(), 'Library', 'Caches', 'ms-playwright')
+        : join(homedir(), '.cache', 'ms-playwright'));
+  if (!root || !existsSync(root)) return undefined;
+
+  // Chromium 1200+ ships chrome-win64 / chrome-linux64; older builds used
+  // chrome-win / chrome-linux, so try both.
+  const exeCandidates = process.platform === 'win32'
+    ? [join('chrome-win64', 'chrome.exe'), join('chrome-win', 'chrome.exe')]
+    : process.platform === 'darwin'
+      ? ['Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing']
+      : [join('chrome-linux64', 'chrome'), join('chrome-linux', 'chrome')];
+
+  try {
+    // Newest build first; chromium_headless_shell cannot render a headed window.
+    const builds = readdirSync(root)
+      .filter((d) => /^chromium-\d+$/.test(d))
+      .sort((a, b) => Number(b.split('-')[1]) - Number(a.split('-')[1]));
+    for (const build of builds) {
+      for (const exe of exeCandidates) {
+        const candidate = join(root, build, exe);
+        if (existsSync(candidate)) return candidate;
+      }
+    }
+  } catch {}
+  return undefined;
+}
+
 export function resolveExecutable(opts: { executablePath?: string; channel?: string }): string | undefined {
   if (opts.executablePath) return opts.executablePath;
   if (opts.channel) {
@@ -91,7 +129,7 @@ export function resolveExecutable(opts: { executablePath?: string; channel?: str
     if (!p) throw new Error(`browser channel "${opts.channel}" not found on this machine`);
     return p;
   }
-  return channelExecutable('chrome') ?? channelExecutable('msedge');
+  return channelExecutable('chrome') ?? channelExecutable('msedge') ?? playwrightChromium();
 }
 
 export function planEngine(cfg: ProjectConfig, override?: PlanOverride): EnginePlan {
